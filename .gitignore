@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+__MACOSX/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Environment
+.env
+.venv/
+venv/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini

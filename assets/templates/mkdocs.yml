@@ -1,0 +1,48 @@
+site_name: "{{PROJECT_NAME}} - Feature Docs"
+site_description: "Documentacao de produto e engenharia"
+docs_dir: docs
+
+theme:
+  name: material
+  language: pt-BR
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.suggest
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search:
+      lang: pt
+
+nav:
+  - Home:
+    - index.md
+    - Brief do Projeto: PROJECT_BRIEF.md
+    - Arquitetura: ARCHITECTURE.md
+    - Glossario: GLOSSARY.md
+    - Decisoes (ADR): DECISIONS.md
+    - Roadmap: ROADMAP.md
+    - Backlog: BACKLOG.md
+
+  - Requisitos Nao Funcionais: nfr/NON_FUNCTIONAL.md
+
+  - Features:
+    - Indice: features/INDEX.md
+
+  - Relatorios:
+    - Indice: reports/README.md
