@@ -1,32 +1,32 @@
-# Arquitetura
+# Architecture
 
-## Visao geral
-[Descrever arquitetura de alto nivel]
+## Overview
+[Describe the high-level architecture]
 
-## Componentes principais
-- [Componente 1]
-- [Componente 2]
+## Main components
+- [Component 1]
+- [Component 2]
 
-## Estrutura de modulos
-- [Modulo 1]
-- [Modulo 2]
+## Module structure
+- [Module 1]
+- [Module 2]
 
-## Documentacao de Features
-- Indice de features: [`docs/features/INDEX.md`](features/INDEX.md)
-- Glossario: [`docs/GLOSSARY.md`](GLOSSARY.md)
+## Feature Documentation
+- Feature index: [`docs/features/INDEX.md`](features/INDEX.md)
+- Glossary: [`docs/GLOSSARY.md`](GLOSSARY.md)
 - NFR: [`docs/nfr/NON_FUNCTIONAL.md`](nfr/NON_FUNCTIONAL.md)
 
-## Diagramas
+## Diagrams
 ```mermaid
 flowchart LR
-    U[Usuario] --> A[Aplicacao]
+    U[User] --> A[Application]
     A --> B[API]
 ```
 
-## Fluxo principal
-1. [Passo 1]
-2. [Passo 2]
+## Main flow
+1. [Step 1]
+2. [Step 2]
 
-## Decisoes de escala
-- [Decisao 1]
-- [Decisao 2]
+## Scaling decisions
+- [Decision 1]
+- [Decision 2]

@@ -1,10 +1,10 @@
 site_name: "{{PROJECT_NAME}} - Feature Docs"
-site_description: "Documentacao de produto e engenharia"
+site_description: "Product and engineering documentation"
 docs_dir: docs
 
 theme:
   name: material
-  language: pt-BR
+  language: en
   features:
     - navigation.sections
     - navigation.expand
@@ -27,22 +27,22 @@ markdown_extensions:
 
 plugins:
   - search:
-      lang: pt
+      lang: en
 
 nav:
   - Home:
     - index.md
-    - Brief do Projeto: PROJECT_BRIEF.md
-    - Arquitetura: ARCHITECTURE.md
-    - Glossario: GLOSSARY.md
-    - Decisoes (ADR): DECISIONS.md
+    - Project Brief: PROJECT_BRIEF.md
+    - Architecture: ARCHITECTURE.md
+    - Glossary: GLOSSARY.md
+    - Decisions (ADR): DECISIONS.md
     - Roadmap: ROADMAP.md
     - Backlog: BACKLOG.md
 
-  - Requisitos Nao Funcionais: nfr/NON_FUNCTIONAL.md
+  - Non-Functional Requirements: nfr/NON_FUNCTIONAL.md
 
   - Features:
-    - Indice: features/INDEX.md
+    - Index: features/INDEX.md
 
-  - Relatorios:
-    - Indice: reports/README.md
+  - Reports:
+    - Index: reports/README.md

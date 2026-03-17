@@ -52,13 +52,13 @@ AC_NFR_HEADING_RE = re.compile(r"^\s*###\s+(AC-NFR-\d{3})\b")
 SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
 
 FEATURE_README_REQUIRED_HEADINGS = {
-    "Visao Geral": ["## visao geral"],
-    "Requisitos": ["## requisitos"],
-    "Criterios de Aceite": ["## criterios de aceite"],
-    "Dependencias": ["## dependencias"],
-    "Rastreabilidade": ["## rastreabilidade"],
-    "Nao Escopo": ["## nao escopo"],
-    "Questoes em Aberto": ["## questoes em aberto"],
+    "Overview": ["## overview"],
+    "Requirements": ["## requirements"],
+    "Acceptance Criteria": ["## acceptance criteria"],
+    "Dependencies": ["## dependencies"],
+    "Traceability": ["## traceability"],
+    "Out of Scope": ["## out of scope"],
+    "Open Questions": ["## open questions"],
 }
 
 
@@ -578,13 +578,13 @@ def to_markdown(result: dict[str, Any]) -> str:
         f"- Summary: {summary['blocker']} BLOCKER, {summary['warn']} WARN, {summary['info']} INFO"
     )
     lines.append("")
-    lines.append("## Matriz de Aderencia (BLOCKER/WARN/INFO)")
+    lines.append("## Compliance Matrix (BLOCKER/WARN/INFO)")
     lines.append("")
-    lines.append("| Severidade | Codigo | Arquivo | Mensagem |")
+    lines.append("| Severity | Code | File | Message |")
     lines.append("|---|---|---|---|")
 
     if not findings:
-        lines.append("| INFO | CLEAN | - | Nenhum desvio encontrado |")
+        lines.append("| INFO | CLEAN | - | No deviations found |")
     else:
         for finding in findings:
             location = finding["path"]

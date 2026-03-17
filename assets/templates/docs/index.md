@@ -1,34 +1,34 @@
-# {{PROJECT_NAME}} - Documentacao
+# {{PROJECT_NAME}} - Documentation
 
-Documentacao de produto e engenharia do projeto.
+Product and engineering documentation for the project.
 
 ---
 
-## Projeto
+## Project
 
 | | |
 |---|---|
-| [Brief do Projeto](PROJECT_BRIEF.md) | Visao geral, publico-alvo e objetivos |
-| [Arquitetura](ARCHITECTURE.md) | Estrutura tecnica e decisoes de stack |
-| [Glossario](GLOSSARY.md) | Termos de dominio do produto |
-| [Decisoes (ADR)](DECISIONS.md) | Registro de decisoes arquiteturais |
-| [Roadmap](ROADMAP.md) | Planejamento de entregas |
-| [Backlog](BACKLOG.md) | Itens pendentes e priorizados |
+| [Project Brief](PROJECT_BRIEF.md) | Overview, target audience, and goals |
+| [Architecture](ARCHITECTURE.md) | Technical structure and stack decisions |
+| [Glossary](GLOSSARY.md) | Product domain terms |
+| [Decisions (ADR)](DECISIONS.md) | Architectural decision records |
+| [Roadmap](ROADMAP.md) | Delivery planning |
+| [Backlog](BACKLOG.md) | Pending and prioritized items |
 
 ---
 
 ## Features
 
-Veja o [Indice completo de Features](features/INDEX.md).
+See the [full Feature Index](features/INDEX.md).
 
 ---
 
-## Requisitos Nao Funcionais
+## Non-Functional Requirements
 
-Requisitos transversais: [NFR](nfr/NON_FUNCTIONAL.md)
+Cross-cutting requirements: [NFR](nfr/NON_FUNCTIONAL.md)
 
 ---
 
-## Relatorios
+## Reports
 
-Veja o [Indice de Relatorios](reports/README.md).
+See the [Report Index](reports/README.md).

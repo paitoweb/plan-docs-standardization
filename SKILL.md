@@ -37,7 +37,7 @@ Read the canonical model from:
 - `references/compliance-rules.md`
 
 Apply these defaults:
-- Language: `pt-BR`
+- Language: `en`
 - Required feature files: `README.md`, `flows.md`, `rules.md`, `notes.md`
 - Required root docs include `docs/reports/README.md`, `mkdocs.yml`, and `docs/requirements-mkdocs.txt`
 - Ignore non-canonical artifacts: `.DS_Store`, `.obsidian`, editor/system files
@@ -46,11 +46,11 @@ Apply these defaults:
 
 Always return these sections, in this order:
 
-1. `Resumo Executivo`
-2. `Matriz de Aderencia (BLOCKER/WARN/INFO)`
-3. `Plano de Adequacao Imediata`
-4. `Lista de arquivos a criar/alterar`
-5. `Diffs propostos (sem aplicar)`
+1. `Executive Summary`
+2. `Compliance Matrix (BLOCKER/WARN/INFO)`
+3. `Immediate Alignment Plan`
+4. `File Create/Alter List`
+5. `Proposed Diffs (not applied)`
 
 ## Workflow
 
@@ -105,7 +105,7 @@ Use templates from `assets/templates/` to propose missing files in diffs.
 
 Default guardrail:
 - Do not emit `create` diffs if rendered content still depends on placeholder text and no concrete content-writing task was provided.
-- In these cases, keep the file in the create list and mark it as deferred (`criacao adiada`) with reason.
+- In these cases, keep the file in the create list and mark it as deferred (`deferred creation`) with reason.
 - Do not emit placeholder-based scaffolding.
 
 Template tokens available:

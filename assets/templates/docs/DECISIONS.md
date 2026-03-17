@@ -1,19 +1,19 @@
-# Decisoes (ADR leve)
+# Decisions (Lightweight ADR)
 
-Formato:
+Format:
 
-- Registro: data do registro
-- Decisao: o que foi decidido
-- Status: Ativo, Revisar, Substituido
-- Contexto: porque foi decidido
-- Consequencias: impactos esperados
+- Record: date of record
+- Decision: what was decided
+- Status: Active, Review, Superseded
+- Context: why it was decided
+- Consequences: expected impacts
 
 ---
 
-## D001 - [Titulo da decisao]
+## D001 - [Decision title]
 
-Registro: {{LAST_UPDATED}}
-Decisao: [Descrever decisao]
-Status: Ativo
-Contexto: [Descrever contexto]
-Consequencias: [Descrever impactos]
+Record: {{LAST_UPDATED}}
+Decision: [Describe decision]
+Status: Active
+Context: [Describe context]
+Consequences: [Describe impacts]

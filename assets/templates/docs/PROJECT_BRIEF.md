@@ -1,43 +1,43 @@
-# {{PROJECT_NAME}} - Brief do Projeto
+# {{PROJECT_NAME}} - Project Brief
 
-## Visao geral
-[Descrever o produto e contexto geral]
+## Overview
+[Describe the product and general context]
 
-## Problema que resolve
-[Descrever dor principal e proposta de valor]
+## Problem it solves
+[Describe the main pain point and value proposition]
 
-## Publico alvo
-- [Segmento 1]
-- [Segmento 2]
+## Target audience
+- [Segment 1]
+- [Segment 2]
 
-## Diferenciais
-- [Diferencial 1]
-- [Diferencial 2]
+## Differentiators
+- [Differentiator 1]
+- [Differentiator 2]
 
-## Objetivos de negocio
-- [Objetivo 1]
-- [Objetivo 2]
+## Business objectives
+- [Objective 1]
+- [Objective 2]
 
-## Objetivos e KPIs
+## Objectives and KPIs
 - [KPI 1]
 - [KPI 2]
 
-## Metricas tecnicas (SLOs)
+## Technical metrics (SLOs)
 - [SLO 1]
 - [SLO 2]
 
-## Nao objetivos
-- [Fora de escopo 1]
-- [Fora de escopo 2]
+## Non-goals
+- [Out of scope 1]
+- [Out of scope 2]
 
-## Restricoes e premissas
-- [Premissa 1]
-- [Premissa 2]
+## Constraints and assumptions
+- [Assumption 1]
+- [Assumption 2]
 
-## Riscos
-- [Risco 1]
-- [Risco 2]
+## Risks
+- [Risk 1]
+- [Risk 2]
 
-## Questoes em Aberto
-- [Questao 1]
-- [Questao 2]
+## Open Questions
+- [Question 1]
+- [Question 2]

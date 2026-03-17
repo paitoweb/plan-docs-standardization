@@ -1,9 +1,9 @@
-# {{FEATURE_NAME}} - Fluxos
+# {{FEATURE_NAME}} - Flows
 
-> Diagramas Mermaid dos fluxos principais da feature.
-> Referencia: [README.md](README.md) | [Glossario](../../GLOSSARY.md)
+> Mermaid diagrams of the feature's main flows.
+> Reference: [README.md](README.md) | [Glossary](../../GLOSSARY.md)
 
-## Fluxos a documentar
+## Flows to document
 
-- [ ] Fluxo principal da feature
-- [ ] Fluxo de excecao/erro
+- [ ] Main feature flow
+- [ ] Exception/error flow

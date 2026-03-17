@@ -1,10 +1,10 @@
-# {{FEATURE_NAME}} - Notas Tecnicas
+# {{FEATURE_NAME}} - Technical Notes
 
-## Entradas do Fluxo
-- Nenhuma entrada detalhada registrada.
+## Flow Inputs
+- No detailed inputs recorded.
 
-## Conexoes Entre Componentes
-- Nenhuma conexao detalhada registrada.
+## Component Connections
+- No detailed connections recorded.
 
-## Observacoes de Implementacao
-- Nenhuma observacao tecnica registrada.
+## Implementation Notes
+- No technical notes recorded.

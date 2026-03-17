@@ -34,13 +34,13 @@ For each directory under `docs/features/<feature>/`:
 
 Each `docs/features/<feature>/README.md` must include:
 
-- `## Visao Geral`
-- `## Requisitos (REQ-*)`
-- `## Criterios de Aceite (AC-*)`
-- `## Dependencias`
-- `## Rastreabilidade`
-- `## Nao Escopo`
-- `## Questoes em Aberto`
+- `## Overview`
+- `## Requirements (REQ-*)`
+- `## Acceptance Criteria (AC-*)`
+- `## Dependencies`
+- `## Traceability`
+- `## Out of Scope`
+- `## Open Questions`
 
 ## ID Conventions
 
@@ -72,11 +72,11 @@ Where:
 
 The planning output must always include:
 
-1. `Resumo Executivo`
-2. `Matriz de Aderencia (BLOCKER/WARN/INFO)`
-3. `Plano de Adequacao Imediata`
-4. `Lista de arquivos a criar/alterar`
-5. `Diffs propostos (sem aplicar)`
+1. `Executive Summary`
+2. `Compliance Matrix (BLOCKER/WARN/INFO)`
+3. `Immediate Alignment Plan`
+4. `File Create/Alter List`
+5. `Proposed Diffs (not applied)`
 
 ## Severity Guidelines
 

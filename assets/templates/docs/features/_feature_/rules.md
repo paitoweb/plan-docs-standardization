@@ -1,9 +1,9 @@
-# {{FEATURE_NAME}} - Regras de Negocio
+# {{FEATURE_NAME}} - Business Rules
 
-> Tabelas de decisao da feature.
-> Referencia: [README.md](README.md) | [Glossario](../../GLOSSARY.md)
+> Decision tables for the feature.
+> Reference: [README.md](README.md) | [Glossary](../../GLOSSARY.md)
 
-## Tabelas a documentar
+## Tables to document
 
-- [ ] Matriz de estados e transicoes
-- [ ] Regras por papel/permissao
+- [ ] State and transition matrix
+- [ ] Rules by role/permission

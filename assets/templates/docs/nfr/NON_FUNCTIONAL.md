@@ -1,41 +1,41 @@
-# Requisitos Nao Funcionais
+# Non-Functional Requirements
 
-- Prioridade padrao: P0
-- Status: Ativo
-- Ultima atualizacao: {{LAST_UPDATED}}
+- Default priority: P0
+- Status: Active
+- Last updated: {{LAST_UPDATED}}
 
-## Contexto
-Documento central para requisitos transversais.
+## Context
+Central document for cross-cutting requirements.
 
-## Escopo
-Desempenho, confiabilidade, seguranca, privacidade, escalabilidade e observabilidade.
+## Scope
+Performance, reliability, security, privacy, scalability, and observability.
 
-## Requisitos (NFR-*)
-- `NFR-001` O sistema DEVE [descrever requisito nao funcional].
-- `NFR-002` O sistema DEVE [descrever requisito nao funcional].
+## Requirements (NFR-*)
+- `NFR-001` The system MUST [describe non-functional requirement].
+- `NFR-002` The system MUST [describe non-functional requirement].
 
-## Criterios de Aceite (AC-NFR-*)
+## Acceptance Criteria (AC-NFR-*)
 
-### AC-NFR-001 - [Titulo] (NFR-001)
-- Given [contexto]
-- When [evento]
-- Then [resultado esperado]
+### AC-NFR-001 - [Title] (NFR-001)
+- Given [context]
+- When [event]
+- Then [expected result]
 
-### AC-NFR-002 - [Titulo] (NFR-002)
-- Given [contexto]
-- When [evento]
-- Then [resultado esperado]
+### AC-NFR-002 - [Title] (NFR-002)
+- Given [context]
+- When [event]
+- Then [expected result]
 
-## Dependencias
-- [Dependencia 1]
-- [Dependencia 2]
+## Dependencies
+- [Dependency 1]
+- [Dependency 2]
 
-## Rastreabilidade
-- Arquitetura: [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
-- Decisoes: [`../DECISIONS.md`](../DECISIONS.md)
+## Traceability
+- Architecture: [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+- Decisions: [`../DECISIONS.md`](../DECISIONS.md)
 
-## Nao Escopo
-- [Nao escopo 1]
+## Out of Scope
+- [Out of scope 1]
 
-## Questoes em Aberto
-- [Questao 1]
+## Open Questions
+- [Question 1]

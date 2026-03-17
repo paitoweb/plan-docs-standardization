@@ -23,27 +23,27 @@ SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
 CREATE_CODES = {"MISSING_REQUIRED_FILE", "MISSING_FEATURE_FILE"}
 
 PLACEHOLDER_HINTS = (
-    "[descrever",
+    "[describe",
     "[item",
-    "[titulo",
-    "[questao",
-    "[dependencia",
-    "[segmento",
-    "[diferencial",
-    "[objetivo",
+    "[title",
+    "[question",
+    "[dependency",
+    "[segment",
+    "[differentiator",
+    "[objective",
     "[kpi",
     "[slo",
-    "[fora de escopo",
-    "[premissa",
-    "[risco",
-    "[definicao",
-    "[termo",
-    "[modulo",
-    "[componente",
-    "[observacao",
-    "[contexto]",
-    "[evento]",
-    "[resultado esperado]",
+    "[out of scope",
+    "[assumption",
+    "[risk",
+    "[definition",
+    "[term",
+    "[module",
+    "[component",
+    "[observation",
+    "[context]",
+    "[event]",
+    "[expected result]",
     "given [",
     "when [",
     "then [",
@@ -191,7 +191,7 @@ def proposed_diffs(
                 {
                     "path": target_rel,
                     "reason": (
-                        "Template canonico nao encontrado. Sem base de conteudo, diff de criacao foi adiado."
+                        "Canonical template not found. Without a content base, creation diff was deferred."
                     ),
                 }
             )
@@ -206,8 +206,8 @@ def proposed_diffs(
                 {
                     "path": target_rel,
                     "reason": (
-                        "Template exige preenchimento manual e geraria placeholders sem tarefa/conteudo "
-                        "explicito. Criacao adiada ate haver conteudo concreto."
+                        "Template requires manual filling and would produce placeholders without an explicit "
+                        "writing task/content. Creation deferred until concrete content is available."
                     ),
                 }
             )
@@ -224,7 +224,7 @@ def proposed_diffs(
     for target_rel in alter_files:
         if len(items) >= max_diffs:
             break
-        reasons = grouped_reasons.get(target_rel, ["Atualizar para aderir ao modelo canonico"])  # pragma: no cover
+        reasons = grouped_reasons.get(target_rel, ["Update to comply with the canonical model"])  # pragma: no cover
         items.append(
             {
                 "path": target_rel,
@@ -249,26 +249,26 @@ def build_markdown(
 
     lines: list[str] = []
 
-    lines.append("## Resumo Executivo")
+    lines.append("## Executive Summary")
     lines.append("")
-    lines.append(f"- Repositorio: `{repo}`")
-    lines.append(f"- Modo detectado: `{result['mode']}`")
+    lines.append(f"- Repository: `{repo}`")
+    lines.append(f"- Detected mode: `{result['mode']}`")
     lines.append(
-        "- Resultado: "
+        "- Result: "
         f"{summary['blocker']} BLOCKER, {summary['warn']} WARN, {summary['info']} INFO"
     )
     lines.append(
-        "- Politica aplicada: alinhamento estrito imediato (qualquer divergencia obrigatoria = BLOCKER)."
+        "- Applied policy: strict immediate alignment (any required divergence = BLOCKER)."
     )
     lines.append("")
 
-    lines.append("## Matriz de Aderencia (BLOCKER/WARN/INFO)")
+    lines.append("## Compliance Matrix (BLOCKER/WARN/INFO)")
     lines.append("")
-    lines.append("| Severidade | Codigo | Arquivo | Mensagem |")
+    lines.append("| Severity | Code | File | Message |")
     lines.append("|---|---|---|---|")
 
     if not findings:
-        lines.append("| INFO | CLEAN | - | Nenhum desvio encontrado |")
+        lines.append("| INFO | CLEAN | - | No deviations found |")
     else:
         for finding in findings:
             location = finding["path"]
@@ -280,48 +280,48 @@ def build_markdown(
             )
 
     lines.append("")
-    lines.append("## Plano de Adequacao Imediata")
+    lines.append("## Immediate Alignment Plan")
     lines.append("")
-    lines.append("1. Criar todos os arquivos obrigatorios ausentes do modelo canonico.")
+    lines.append("1. Create all required files missing from the canonical model.")
     lines.append(
-        "2. Corrigir arquivos existentes com falhas de secao minima, formato de IDs e rastreabilidade AC->REQ/AC-NFR->NFR."
+        "2. Fix existing files with missing sections, ID format issues, and AC->REQ/AC-NFR->NFR traceability failures."
     )
-    lines.append("3. Corrigir links internos quebrados e referencias invalidas no nav do mkdocs.")
-    lines.append("4. Reexecutar auditoria ate zerar BLOCKER.")
+    lines.append("3. Fix broken internal links and invalid mkdocs nav references.")
+    lines.append("4. Re-run audit until BLOCKER count reaches zero.")
     lines.append("")
 
-    lines.append("## Lista de arquivos a criar/alterar")
+    lines.append("## File Create/Alter List")
     lines.append("")
 
-    lines.append("### Criar")
+    lines.append("### Create")
     if create_files:
         for path in create_files:
             lines.append(f"- `{path}`")
     else:
-        lines.append("- Nenhum")
+        lines.append("- None")
 
     lines.append("")
-    lines.append("### Criacao adiada (sem conteudo/tarefa para escrita)")
+    lines.append("### Deferred Creation (no content/writing task available)")
     if deferred_create:
         for item in deferred_create:
             lines.append(f"- `{item['path']}`: {item['reason']}")
     else:
-        lines.append("- Nenhum")
+        lines.append("- None")
 
     lines.append("")
-    lines.append("### Alterar")
+    lines.append("### Alter")
     if alter_files:
         for path in alter_files:
             lines.append(f"- `{path}`")
     else:
-        lines.append("- Nenhum")
+        lines.append("- None")
 
     lines.append("")
-    lines.append("## Diffs propostos (sem aplicar)")
+    lines.append("## Proposed Diffs (not applied)")
     lines.append("")
 
     if not diffs:
-        lines.append("Nenhum diff proposto.")
+        lines.append("No diffs proposed.")
     else:
         for item in diffs:
             lines.append(f"### {item['type']}: `{item['path']}`")

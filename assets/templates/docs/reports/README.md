@@ -1,15 +1,15 @@
-# Indice de Relatorios
+# Report Index
 
-## Proposito
-Consolidar relatorios de verificacao de requisitos, analises tecnicas e investigacoes.
+## Purpose
+Consolidate requirement verification reports, technical analyses, and investigations.
 
-## Relatorios
+## Reports
 
-| Relatorio | Data | Escopo | Status |
+| Report | Date | Scope | Status |
 |---|---|---|---|
-| [Nome do relatorio](./example-report.md) | {{LAST_UPDATED}} | [Escopo] | Draft |
+| [Report name](./example-report.md) | {{LAST_UPDATED}} | [Scope] | Draft |
 
-## Convencao de Arquivos
+## File Conventions
 
-- Padrao: `<tema>-requirements-verification.md` ou `<tema>-analysis.md`
-- Sempre incluir resumo executivo e evidencias.
+- Pattern: `<topic>-requirements-verification.md` or `<topic>-analysis.md`
+- Always include an executive summary and evidence.

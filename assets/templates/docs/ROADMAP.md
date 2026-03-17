@@ -1,17 +1,17 @@
 # Roadmap
 
-## Fase 0 - Fundacao documental
+## Phase 0 - Documentation foundation
 - [Item 1]
 - [Item 2]
 
-## Fase 1 - Base funcional
+## Phase 1 - Functional baseline
 - [Item 1]
 - [Item 2]
 
-## Fase 2 - Escala e resiliencia
+## Phase 2 - Scale and resilience
 - [Item 1]
 - [Item 2]
 
-## Fase 3 - Operacao
+## Phase 3 - Operations
 - [Item 1]
 - [Item 2]

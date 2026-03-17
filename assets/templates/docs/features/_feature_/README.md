@@ -1,39 +1,39 @@
 # {{FEATURE_NAME}}
 
-- Prioridade: P0
-- Status: Ativo
-- Ultima atualizacao: {{LAST_UPDATED}}
+- Priority: P0
+- Status: Active
+- Last updated: {{LAST_UPDATED}}
 
-## Visao Geral
-[Descrever o objetivo da feature]
+## Overview
+[Describe the feature objective]
 
-## Requisitos (REQ-*)
+## Requirements (REQ-*)
 
-- `REQ-{{FEATURE_ID}}-001` O sistema DEVE [descrever requisito].
-- `REQ-{{FEATURE_ID}}-002` O sistema DEVE [descrever requisito].
+- `REQ-{{FEATURE_ID}}-001` The system MUST [describe requirement].
+- `REQ-{{FEATURE_ID}}-002` The system MUST [describe requirement].
 
-## Criterios de Aceite (AC-*)
+## Acceptance Criteria (AC-*)
 
-### AC-{{FEATURE_ID}}-001 - [Titulo] (REQ-{{FEATURE_ID}}-001)
-- Given [contexto]
-- When [evento]
-- Then [resultado esperado]
+### AC-{{FEATURE_ID}}-001 - [Title] (REQ-{{FEATURE_ID}}-001)
+- Given [context]
+- When [event]
+- Then [expected result]
 
-### AC-{{FEATURE_ID}}-002 - [Titulo] (REQ-{{FEATURE_ID}}-002)
-- Given [contexto]
-- When [evento]
-- Then [resultado esperado]
+### AC-{{FEATURE_ID}}-002 - [Title] (REQ-{{FEATURE_ID}}-002)
+- Given [context]
+- When [event]
+- Then [expected result]
 
-## Dependencias
-- [Dependencia 1]
-- [Dependencia 2]
+## Dependencies
+- [Dependency 1]
+- [Dependency 2]
 
-## Rastreabilidade
-- Decisoes: [`../../DECISIONS.md`](../../DECISIONS.md)
+## Traceability
+- Decisions: [`../../DECISIONS.md`](../../DECISIONS.md)
 - NFR: [`../../nfr/NON_FUNCTIONAL.md`](../../nfr/NON_FUNCTIONAL.md)
 
-## Nao Escopo
-- [Nao escopo 1]
+## Out of Scope
+- [Out of scope 1]
 
-## Questoes em Aberto
-- [Questao 1]
+## Open Questions
+- [Question 1]

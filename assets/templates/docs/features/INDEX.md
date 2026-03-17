@@ -1,34 +1,34 @@
-# Indice de Features
+# Feature Index
 
-Ultima atualizacao: {{LAST_UPDATED}}
+Last updated: {{LAST_UPDATED}}
 
-## Proposito
-Centralizar navegacao das features com rastreabilidade para requisitos e criterios.
+## Purpose
+Centralize feature navigation with traceability to requirements and criteria.
 
-## Padrao de IDs
+## ID Conventions
 
-- Requisito funcional: `REQ-<FEATURE>-NNN`
-- Criterio de aceite: `AC-<FEATURE>-NNN`
-- Requisito nao funcional: `NFR-NNN`
+- Functional requirement: `REQ-<FEATURE>-NNN`
+- Acceptance criterion: `AC-<FEATURE>-NNN`
+- Non-functional requirement: `NFR-NNN`
 
-## Catalogo de Features
+## Feature Catalog
 
-| Feature | Prioridade | Status | Pasta | Fluxos | Regras |
+| Feature | Priority | Status | Folder | Flows | Rules |
 |---|---|---|---|---|---|
-| [Nome da feature] | P0 | Ativo | [`feature-slug/`](feature-slug/README.md) | [flows.md](feature-slug/flows.md) | [rules.md](feature-slug/rules.md) |
+| [Feature name] | P0 | Active | [`feature-slug/`](feature-slug/README.md) | [flows.md](feature-slug/flows.md) | [rules.md](feature-slug/rules.md) |
 
-## Requisitos Nao Funcionais
+## Non-Functional Requirements
 
-- Documento global: [`../nfr/NON_FUNCTIONAL.md`](../nfr/NON_FUNCTIONAL.md)
+- Global document: [`../nfr/NON_FUNCTIONAL.md`](../nfr/NON_FUNCTIONAL.md)
 
-## Relatorios
+## Reports
 
-- [Indice de relatorios](../reports/README.md)
+- [Report index](../reports/README.md)
 
-## Regras de Governanca
+## Governance Rules
 
-- Toda feature DEVE possuir `README.md`, `flows.md`, `rules.md`, `notes.md`.
-- Todo requisito funcional DEVE receber ID `REQ-*` unico.
-- Todo criterio de aceite DEVE receber ID `AC-*` e referenciar ao menos um `REQ-*`.
-- Todo requisito transversal DEVE ser registrado em `docs/nfr/NON_FUNCTIONAL.md`.
-- Termos de dominio DEVEM ser definidos em [`../GLOSSARY.md`](../GLOSSARY.md).
+- Every feature MUST have `README.md`, `flows.md`, `rules.md`, `notes.md`.
+- Every functional requirement MUST receive a unique `REQ-*` ID.
+- Every acceptance criterion MUST receive an `AC-*` ID and reference at least one `REQ-*`.
+- Every cross-cutting requirement MUST be registered in `docs/nfr/NON_FUNCTIONAL.md`.
+- Domain terms MUST be defined in [`../GLOSSARY.md`](../GLOSSARY.md).

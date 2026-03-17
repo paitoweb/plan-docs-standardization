@@ -1,21 +1,21 @@
-# Glossario de Dominio
+# Domain Glossary
 
-Ultima atualizacao: {{LAST_UPDATED}}
+Last updated: {{LAST_UPDATED}}
 
-## Proposito
-Centralizar definicoes de termos para reduzir ambiguidade.
+## Purpose
+Centralize term definitions to reduce ambiguity.
 
-## Termos Gerais
+## General Terms
 
-| Termo | Definicao |
+| Term | Definition |
 |---|---|
-| Produto | [Definicao] |
-| Usuario | [Definicao] |
-| Feature | [Definicao] |
+| Product | [Definition] |
+| User | [Definition] |
+| Feature | [Definition] |
 
-## Termos Especificos
+## Specific Terms
 
-| Termo | Definicao |
+| Term | Definition |
 |---|---|
-| [Termo 1] | [Definicao] |
-| [Termo 2] | [Definicao] |
+| [Term 1] | [Definition] |
+| [Term 2] | [Definition] |
