@@ -64,6 +64,22 @@ Non-fatal context can be reported as WARN/INFO, for example:
 - low coverage of reports indexing
 - inconsistent naming conventions that still resolve
 
+### R010 AI instruction section missing (BLOCKER)
+
+For each existing AI instruction file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`,
+`.github/copilot-instructions.md`), a missing canonical section
+(`## Workflow: New Feature` or `## Working Principles`) is non-compliant.
+
+### R011 AI instruction section divergent (BLOCKER)
+
+If a canonical section is present but its normalized content differs from the
+canonical guidelines block, it is non-compliant.
+
+### R012 AI instruction file absent (INFO)
+
+If an AI instruction file does not exist, report it as INFO only. The skill never
+creates these files.
+
 ## Classification Rules
 
 Use strict immediate alignment defaults:
@@ -94,5 +110,9 @@ The compliance scripts and skill execution must not:
 - run formatters in write mode
 - run code generation that mutates tracked files
 - run migration commands
+
+Additionally, the skill must never create AI instruction files. For absent
+`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.github/copilot-instructions.md`, output only an
+INFO finding instructing manual creation.
 
 Output only diagnostics and planning artifacts.
