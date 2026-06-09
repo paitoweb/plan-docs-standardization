@@ -70,16 +70,6 @@ BULLET_ITEM_RE = re.compile(r"^\s*[-*]\s+\S")
 
 SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
 
-FEATURE_README_REQUIRED_HEADINGS = {
-    "Overview": ["## overview"],
-    "Requirements": ["## requirements"],
-    "Acceptance Criteria": ["## acceptance criteria"],
-    "Dependencies": ["## dependencies"],
-    "Traceability": ["## traceability"],
-    "Out of Scope": ["## out of scope"],
-    "Open Questions": ["## open questions"],
-}
-
 
 @dataclass
 class Finding:
@@ -203,6 +193,56 @@ def iter_level2_sections(text: str) -> list[list[str]]:
     return sections
 
 
+def compute_feature_section_gaps(repo: Path) -> dict[str, list[str]]:
+    """Map each feature README (rel path) to the reference sections it is missing.
+
+    The reference is the feature README with the most distinct level-2 sections;
+    ties break toward the alphabetically first feature directory. Returns {} when
+    there are fewer than two feature READMEs.
+    """
+
+    readmes: list[tuple[str, set[str], dict[str, str]]] = []
+    for feature_dir in collect_feature_dirs(repo):
+        readme = feature_dir / "README.md"
+        if not readme.exists():
+            continue
+        titles = feature_section_titles(readme.read_text(encoding="utf-8"))
+        normalized_set = {normalized for normalized, _ in titles}
+        original_by_normalized = {normalized: original for normalized, original in titles}
+        rel = str(readme.relative_to(repo))
+        readmes.append((rel, normalized_set, original_by_normalized))
+
+    if len(readmes) < 2:
+        return {}
+
+    reference_rel, _, reference_titles = max(readmes, key=lambda item: len(item[1]))
+
+    gaps: dict[str, list[str]] = {}
+    for rel, normalized_set, _ in readmes:
+        if rel == reference_rel:
+            continue
+        missing = [
+            original
+            for normalized, original in reference_titles.items()
+            if normalized not in normalized_set
+        ]
+        if missing:
+            gaps[rel] = missing
+    return gaps
+
+
+def check_feature_section_consistency(repo: Path, findings: list[Finding]) -> None:
+    for rel, missing in compute_feature_section_gaps(repo).items():
+        make_finding(
+            findings,
+            "BLOCKER",
+            "FEATURE_SECTION_INCONSISTENT",
+            rel,
+            "Feature README missing sections established by the reference feature: "
+            + ", ".join(missing),
+        )
+
+
 def should_ignore_path(path: Path) -> bool:
     return any(part in IGNORED_PATH_PARTS for part in path.parts) or path.name in IGNORED_FILE_NAMES
 
@@ -274,25 +314,10 @@ def check_feature_files(feature_dir: Path, repo: Path, findings: list[Finding]) 
             )
 
 
-def heading_lines(text: str) -> list[str]:
-    return [normalize_text(line.strip()) for line in text.splitlines() if line.strip()]
-
-
 def check_feature_readme(readme_path: Path, repo: Path, findings: list[Finding]) -> None:
     rel = str(readme_path.relative_to(repo))
     content = readme_path.read_text(encoding="utf-8")
     lines = content.splitlines()
-    normalized_lines = heading_lines(content)
-
-    for heading_name, prefixes in FEATURE_README_REQUIRED_HEADINGS.items():
-        if not any(any(line.startswith(prefix) for prefix in prefixes) for line in normalized_lines):
-            make_finding(
-                findings,
-                "BLOCKER",
-                "MISSING_README_SECTION",
-                rel,
-                f"Feature README missing section: {heading_name}",
-            )
 
     for token in sorted(set(iter_code_span_tokens(content))):
         if token.startswith("REQ-"):
@@ -704,6 +729,8 @@ def audit_repository(repo: Path) -> dict[str, Any]:
         readme = feature_dir / "README.md"
         if readme.exists():
             check_feature_readme(readme, repo, findings)
+
+    check_feature_section_consistency(repo, findings)
 
     nfr_file = repo / "docs" / "nfr" / "NON_FUNCTIONAL.md"
     check_nfr_file(nfr_file, repo, findings)
