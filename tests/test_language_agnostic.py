@@ -106,3 +106,14 @@ def test_check_ai_absent_is_info(tmp_path):
     adm.check_ai_instruction_files(tmp_path, findings)
     codes = {(f.path, f.code, f.severity) for f in findings}
     assert ("CLAUDE.md", "AI_INSTRUCTION_FILE_ABSENT", "INFO") in codes
+
+
+def test_check_ai_both_shapes_missing_yields_two_blockers(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text("# x\nplain prose only\n", encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    blockers = [f for f in findings if f.path == "CLAUDE.md"]
+    assert len(blockers) == 2
+    assert all(f.code == "AI_INSTRUCTION_SECTION_MISSING" for f in blockers)
+    assert any("workflow" in f.message.lower() for f in blockers)
+    assert any("principles" in f.message.lower() for f in blockers)
