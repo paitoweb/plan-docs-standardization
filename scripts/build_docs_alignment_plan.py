@@ -157,6 +157,9 @@ def _section_diff_block(target_rel: str, file_lines: list[str], heading: str, ca
 
 
 def ai_instruction_update_diff(repo: Path, target_rel: str) -> str:
+    # Each section produces an independent hunk computed against the original file;
+    # offsets are not re-based across hunks. The result is a human-facing proposed
+    # diff for review, not a patch intended for `git apply`.
     canonical = adm.load_canonical_sections()
     file_path = repo / target_rel
     text = file_path.read_text(encoding="utf-8") if file_path.exists() else ""

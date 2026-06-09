@@ -2,11 +2,6 @@ import audit_docs_model as adm
 import build_docs_alignment_plan as plan
 
 
-def _canonical_text():
-    sections = adm.load_canonical_sections()
-    return "\n\n".join(sections[h] for h in adm.AI_INSTRUCTION_SECTION_HEADINGS)
-
-
 def test_absent_finding_excluded_from_actions():
     result = {
         "findings": [
