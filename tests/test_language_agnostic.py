@@ -61,6 +61,17 @@ def test_consistency_unique_section_does_not_cascade(tmp_path):
     assert findings == []
 
 
+def test_consistency_exact_half_is_not_majority(tmp_path):
+    # "Extra" is in exactly 2 of 4 features (50%, not a strict majority) → not expected
+    _write_feature(tmp_path, "a", ["Visão Geral", "Requisitos", "Extra"])
+    _write_feature(tmp_path, "b", ["Visão Geral", "Requisitos", "Extra"])
+    _write_feature(tmp_path, "c", ["Visão Geral", "Requisitos"])
+    _write_feature(tmp_path, "d", ["Visão Geral", "Requisitos"])
+    findings = []
+    adm.check_feature_section_consistency(tmp_path, findings)
+    assert findings == []
+
+
 def test_consistency_single_feature_no_finding(tmp_path):
     _write_feature(tmp_path, "alpha", ["Overview", "Requirements"])
     findings = []
