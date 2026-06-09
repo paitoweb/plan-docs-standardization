@@ -1,4 +1,5 @@
 import audit_docs_model as adm
+import build_docs_alignment_plan as plan
 
 
 def test_normalize_section_title_strips_accents_paren_and_case():
@@ -117,9 +118,6 @@ def test_check_ai_both_shapes_missing_yields_two_blockers(tmp_path):
     assert all(f.code == "AI_INSTRUCTION_SECTION_MISSING" for f in blockers)
     assert any("workflow" in f.message.lower() for f in blockers)
     assert any("principles" in f.message.lower() for f in blockers)
-
-
-import build_docs_alignment_plan as plan
 
 
 def test_feature_section_append_diff_proposes_missing_headings(tmp_path):
