@@ -46,6 +46,16 @@ def test_ai_instruction_update_diff_replaces_divergent_section(tmp_path):
     assert "+- **Pragmatism**" in diff
 
 
+def test_ai_instruction_update_diff_identical_file_reports_no_changes(tmp_path):
+    sections = adm.load_canonical_sections()
+    text = "# Project\n\n" + "\n\n".join(
+        sections[h] for h in adm.AI_INSTRUCTION_SECTION_HEADINGS
+    ) + "\n"
+    (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
+    diff = plan.ai_instruction_update_diff(tmp_path, "CLAUDE.md")
+    assert diff == "No changes required."
+
+
 def test_build_markdown_lists_absent_ai_files(tmp_path):
     result = {
         "mode": "alignment",
