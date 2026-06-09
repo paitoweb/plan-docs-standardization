@@ -125,21 +125,6 @@ def extract_section(text: str, heading: str) -> str | None:
     return "\n".join(lines[start:end])
 
 
-def normalize_block(text: str) -> str:
-    lines = [line.strip() for line in text.splitlines()]
-    while lines and not lines[0]:
-        lines.pop(0)
-    while lines and not lines[-1]:
-        lines.pop()
-
-    collapsed: list[str] = []
-    for line in lines:
-        if not line and collapsed and not collapsed[-1]:
-            continue
-        collapsed.append(line)
-    return "\n".join(collapsed)
-
-
 def load_canonical_sections() -> dict[str, str]:
     template_path = skill_root() / CANONICAL_GUIDELINES_REL
     text = template_path.read_text(encoding="utf-8")

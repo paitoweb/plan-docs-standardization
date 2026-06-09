@@ -34,11 +34,6 @@ def test_extract_section_returns_text_or_none():
     assert adm.extract_section(text, "## Z") is None
 
 
-def test_normalize_block_collapses_blanks_and_trims():
-    raw = "  ## A  \n\n\nbody\n\n"
-    assert adm.normalize_block(raw) == "## A\n\nbody"
-
-
 def test_load_canonical_sections_returns_two_sections():
     sections = adm.load_canonical_sections()
     assert set(sections) == {"## Workflow: New Feature", "## Working Principles"}
