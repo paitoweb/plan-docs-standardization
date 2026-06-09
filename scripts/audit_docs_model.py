@@ -179,40 +179,43 @@ def iter_level2_sections(text: str) -> list[list[str]]:
 
 
 def compute_feature_section_gaps(repo: Path) -> dict[str, list[str]]:
-    """Map each feature README (rel path) to the reference sections it is missing.
+    """Map each feature README (rel path) to the majority sections it is missing.
 
-    The reference is the feature README with the most distinct level-2 sections;
-    ties break toward the alphabetically first feature directory. Returns {} when
-    there are fewer than two feature READMEs.
+    A section is "expected" when a strict majority of feature READMEs use it
+    (count > readme_count / 2). A section unique to one richer feature never becomes
+    expected, so it does not cascade onto the others. Returns {} when there are fewer
+    than two feature READMEs.
     """
 
-    readmes: list[tuple[str, set[str], dict[str, str]]] = []
+    feature_sets: list[tuple[str, set[str]]] = []
+    counts: dict[str, int] = {}
+    first_original: dict[str, str] = {}
     for feature_dir in collect_feature_dirs(repo):
         readme = feature_dir / "README.md"
         if not readme.exists():
             continue
         titles = feature_section_titles(readme.read_text(encoding="utf-8"))
         normalized_set = {normalized for normalized, _ in titles}
-        original_by_normalized = {normalized: original for normalized, original in titles}
-        rel = str(readme.relative_to(repo))
-        readmes.append((rel, normalized_set, original_by_normalized))
+        for normalized, original in titles:
+            if normalized not in first_original:
+                first_original[normalized] = original
+        for normalized in normalized_set:
+            counts[normalized] = counts.get(normalized, 0) + 1
+        feature_sets.append((str(readme.relative_to(repo)), normalized_set))
 
-    if len(readmes) < 2:
+    readme_count = len(feature_sets)
+    if readme_count < 2:
         return {}
 
-    # readmes is alphabetical (collect_feature_dirs is sorted) and max keeps the first
-    # item on ties, so equal section counts break toward the alphabetically-first feature.
-    reference_rel, _, reference_titles = max(readmes, key=lambda item: len(item[1]))
+    expected = [
+        normalized
+        for normalized in first_original
+        if counts[normalized] > readme_count / 2
+    ]
 
     gaps: dict[str, list[str]] = {}
-    for rel, normalized_set, _ in readmes:
-        if rel == reference_rel:
-            continue
-        missing = [
-            original
-            for normalized, original in reference_titles.items()
-            if normalized not in normalized_set
-        ]
+    for rel, normalized_set in feature_sets:
+        missing = [first_original[n] for n in expected if n not in normalized_set]
         if missing:
             gaps[rel] = missing
     return gaps
@@ -222,10 +225,10 @@ def check_feature_section_consistency(repo: Path, findings: list[Finding]) -> No
     for rel, missing in compute_feature_section_gaps(repo).items():
         make_finding(
             findings,
-            "BLOCKER",
+            "WARN",
             "FEATURE_SECTION_INCONSISTENT",
             rel,
-            "Feature README missing sections established by the reference feature: "
+            "Feature README missing sections used by the majority of features: "
             + ", ".join(missing),
         )
 

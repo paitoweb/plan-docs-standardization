@@ -36,16 +36,40 @@ def test_consistency_passes_when_all_features_match_ptbr(tmp_path):
     assert findings == []
 
 
-def test_consistency_flags_feature_missing_reference_section(tmp_path):
+def test_consistency_flags_feature_missing_majority_section(tmp_path):
+    # 2 of 3 features use "Questões em Aberto" → majority → the third is flagged (WARN)
     _write_feature(tmp_path, "alpha", ["Visão Geral", "Requisitos", "Questões em Aberto"])
-    _write_feature(tmp_path, "beta", ["Visão Geral", "Requisitos"])
+    _write_feature(tmp_path, "beta", ["Visão Geral", "Requisitos", "Questões em Aberto"])
+    _write_feature(tmp_path, "gamma", ["Visão Geral", "Requisitos"])
     findings = []
     adm.check_feature_section_consistency(tmp_path, findings)
     assert len(findings) == 1
     f = findings[0]
     assert f.code == "FEATURE_SECTION_INCONSISTENT"
-    assert f.path == "docs/features/beta/README.md"
+    assert f.severity == "WARN"
+    assert f.path == "docs/features/gamma/README.md"
     assert "Questões em Aberto" in f.message
+
+
+def test_consistency_unique_section_does_not_cascade(tmp_path):
+    # one richer feature has an extra section; it must NOT be required of the others
+    _write_feature(tmp_path, "alpha", ["Visão Geral", "Requisitos", "Métricas"])
+    _write_feature(tmp_path, "beta", ["Visão Geral", "Requisitos"])
+    _write_feature(tmp_path, "gamma", ["Visão Geral", "Requisitos"])
+    findings = []
+    adm.check_feature_section_consistency(tmp_path, findings)
+    assert findings == []
+
+
+def test_consistency_exact_half_is_not_majority(tmp_path):
+    # "Extra" is in exactly 2 of 4 features (50%, not a strict majority) → not expected
+    _write_feature(tmp_path, "a", ["Visão Geral", "Requisitos", "Extra"])
+    _write_feature(tmp_path, "b", ["Visão Geral", "Requisitos", "Extra"])
+    _write_feature(tmp_path, "c", ["Visão Geral", "Requisitos"])
+    _write_feature(tmp_path, "d", ["Visão Geral", "Requisitos"])
+    findings = []
+    adm.check_feature_section_consistency(tmp_path, findings)
+    assert findings == []
 
 
 def test_consistency_single_feature_no_finding(tmp_path):
@@ -56,18 +80,12 @@ def test_consistency_single_feature_no_finding(tmp_path):
 
 
 def test_compute_feature_section_gaps_returns_original_titles(tmp_path):
+    # "Dependências" is in 2 of 3 features → majority → the third's gap reports it
     _write_feature(tmp_path, "alpha", ["Visão Geral", "Requisitos", "Dependências"])
-    _write_feature(tmp_path, "beta", ["Visão Geral", "Requisitos"])
+    _write_feature(tmp_path, "beta", ["Visão Geral", "Requisitos", "Dependências"])
+    _write_feature(tmp_path, "gamma", ["Visão Geral", "Requisitos"])
     gaps = adm.compute_feature_section_gaps(tmp_path)
-    assert gaps == {"docs/features/beta/README.md": ["Dependências"]}
-
-
-def test_compute_feature_section_gaps_tie_breaks_to_alphabetical_first(tmp_path):
-    # Equal distinct-section counts; alpha must win the reference tie.
-    _write_feature(tmp_path, "alpha", ["Comum", "Só Alpha"])
-    _write_feature(tmp_path, "beta", ["Comum", "Só Beta"])
-    gaps = adm.compute_feature_section_gaps(tmp_path)
-    assert gaps == {"docs/features/beta/README.md": ["Só Alpha"]}
+    assert gaps == {"docs/features/gamma/README.md": ["Dependências"]}
 
 
 WORKFLOW_PT = "## Workflow: nova feature\n1. Brainstorm\n2. Spec\n3. Plano\n"

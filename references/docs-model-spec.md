@@ -35,9 +35,10 @@ For each directory under `docs/features/<feature>/`:
 The seven canonical sections (Overview, Requirements, Acceptance Criteria, Dependencies,
 Traceability, Out of Scope, Open Questions) are the English baseline used by bootstrap
 templates. In alignment mode the skill does not enforce these English names. Instead it
-infers the expected section set from the project's own feature READMEs (the most complete
-feature is the reference) and requires the other features to be consistent with it, in
-whatever language the project documents.
+infers the expected section set from the project's own feature READMEs by strict majority
+(a section is expected when more than half of the features use it) and warns when a
+feature is missing an expected section, in whatever language the project documents. A
+section unique to one richer feature is not required of the others.
 
 ## ID Conventions
 
