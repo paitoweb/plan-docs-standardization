@@ -7,6 +7,8 @@ Run checks in read-only mode over:
 - `mkdocs.yml`
 - `docs/**/*.md`
 - `docs/requirements-mkdocs.txt`
+- `docs/traceability.json` (when present)
+- Source and test files matched by traceability configuration
 
 Ignore non-canonical paths:
 
@@ -77,6 +79,16 @@ For each existing AI instruction file, two sections are detected structurally (l
 independent): a workflow section (a heading followed by a numbered list of >=3 steps) and
 a principles section (a different heading followed by a bulleted list of >=3 items). A
 file missing either shape is non-compliant (`AI_INSTRUCTION_SECTION_MISSING`).
+
+### R011 Code traceability (BLOCKER)
+
+When `docs/traceability.json` exists (required for Cursor projects in alignment mode):
+
+- Every non-excluded source file matched by `source_globs` MUST cite at least one `REQ-*` declared in the feature README.
+- Every test file matched by `test_globs` MUST include a `Traceability:` comment referencing `AC-*` or `REQ-*`.
+- Missing test files for a configured feature is a `BLOCKER`.
+
+Run `scripts/audit_docs_model.py` for the combined check (includes code traceability when `docs/traceability.json` is present).
 
 ### R012 AI instruction file absent (INFO)
 

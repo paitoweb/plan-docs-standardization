@@ -7,6 +7,13 @@ alwaysApply: true
 
 Structured documentation leads development. AI implements from documented decisions — not ad hoc prompts.
 
+## Hard gates (never skip)
+
+1. **No implementation without docs** — if `docs/features/<feature>/` lacks REQs/ACs for the requested work, stop and create or update the spec first.
+2. **No code without REQ citation** — every source file that implements feature logic MUST cite at least one `REQ-*` from the feature README (file header or construct doc comment).
+3. **No tests without traceability** — every test file MUST include a `Traceability:` comment referencing `AC-*` or `REQ-*`.
+4. **Verify before finishing** — run `/docs-audit` (or `python3 .resources/plan-docs-standardization/scripts/audit_docs_model.py .`) and resolve all BLOCKERs before declaring work complete.
+
 ## Workflow: New Feature
 
 Steps in order — each typically corresponds to one interaction. Steps may be combined when the feature is small.
@@ -14,12 +21,12 @@ Steps in order — each typically corresponds to one interaction. Steps may be c
 **IMPORTANT**: Before advancing to any step, verify that the previous ones were completed. If the user asks to implement without docs, requirements, and a plan in place, question it and guide them back to the correct step.
 
 1. **Brainstorm** — align intent and technical choices with the user.
-2. **Spec** — create the feature structure under `docs/features/<feature>/` (if it does not exist) and write it with concrete REQs/ACs.
+2. **Spec** — create the feature structure under `docs/features/<feature>/` (if it does not exist) and write it with concrete REQs/ACs. Register source/test globs in `docs/traceability.json`.
 3. **Plan** — analyze the documentation and create an implementation plan.
 4. **Review** — review and approve the plan with the user.
-5. **Implementation** — implement the approved plan, using TDD when applicable.
+5. **Implementation** — implement the approved plan with REQ citations in code, using TDD when applicable.
 6. **Document** — update `ROADMAP.md`, `BACKLOG.md`, `DECISIONS.md`, `ARCHITECTURE.md` as needed, and whatever the feature needs under `docs/features/<feature>/`.
-7. **Tests** — create/update tests (following the traceability principle) and validate.
+7. **Tests** — create/update tests with `Traceability:` comments and validate.
 8. **Commit & PR** — commit following conventions and open a PR referencing REQ-AC and linking to the feature doc.
 
 ## Working Principles
@@ -28,11 +35,11 @@ Steps in order — each typically corresponds to one interaction. Steps may be c
 - **Distinguish assumption from fact**: make explicit when something is your own conclusion, a hypothesis, or an assumption vs. established project data/rule.
 - **Official docs for APIs**: for libraries and SDKs, rely only on official documentation — never assume signatures, methods, or behaviors.
 - **Pragmatism**: be practical and direct. Do not invent out-of-scope features. Do not ramble.
-- **Traceability**: traceability is mandatory at three ends: documented requirement (`REQ-*` under `docs/features/`), **source code that implements a REQ cites the ID** (function/constant doc comment or file header), and tests include a traceability comment pointing to the doc.
+- **Traceability**: mandatory at three ends — documented requirement (`REQ-*`), source code citing the ID, tests with `Traceability:` pointing to `AC-*` or `REQ-*`.
 
 ## Documentation Model
 
-Canonical structure lives under `docs/` with MkDocs (`mkdocs.yml`). ID conventions:
+Canonical structure lives under `docs/` with MkDocs (`mkdocs.yml`) and `docs/traceability.json`. ID conventions:
 
 | Type | Format | Example |
 |------|--------|---------|
@@ -41,4 +48,4 @@ Canonical structure lives under `docs/` with MkDocs (`mkdocs.yml`). ID conventio
 | Non-functional requirement | `NFR-NNN` | `NFR-001` |
 | NFR acceptance criterion | `AC-NFR-NNN` | `AC-NFR-001` |
 
-Use the `plan-docs-standardization` skill (`.cursor/skills/plan-docs-standardization/`) or `/docs-audit` to validate compliance. Use `/docs-bootstrap` for new projects without docs.
+Use `/docs-audit` for full compliance (docs + code traceability), or skill `plan-docs-standardization`. Use `/docs-bootstrap` for new projects without docs.

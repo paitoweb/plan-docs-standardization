@@ -21,6 +21,13 @@ Define the strict baseline documentation model that this skill enforces for boot
 - `docs/features/INDEX.md`
 - `docs/reports/README.md`
 
+### Traceability configuration (Cursor / full Docs-First)
+
+- `docs/traceability.json` — maps each feature to `source_globs`, `test_globs`, and `exclude_globs`
+
+When `.cursor/` exists and mode is `alignment`, missing `docs/traceability.json` is a `BLOCKER`.
+Source files must cite `REQ-*` IDs; test files must include `Traceability:` comments.
+
 ### Feature-level required files
 
 For each directory under `docs/features/<feature>/`:

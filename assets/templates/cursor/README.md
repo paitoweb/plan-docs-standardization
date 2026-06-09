@@ -25,10 +25,11 @@ mkdir -p "$PROJECT/.cursor/commands"
 mkdir -p "$PROJECT/.cursor/skills/plan-docs-standardization"
 
 cp assets/templates/cursor/rules/docs-first-workflow.mdc "$PROJECT/.cursor/rules/"
-cp assets/templates/cursor/commands/docs-bootstrap.md "$PROJECT/.cursor/commands/"
-cp assets/templates/cursor/commands/docs-audit.md "$PROJECT/.cursor/commands/"
+cp assets/templates/cursor/rules/docs-first-implementation.mdc "$PROJECT/.cursor/rules/"
+cp assets/templates/cursor/commands/*.md "$PROJECT/.cursor/commands/"
 cp assets/templates/cursor/skills/plan-docs-standardization/SKILL.md \
    "$PROJECT/.cursor/skills/plan-docs-standardization/"
+cp assets/templates/docs/traceability.json "$PROJECT/docs/"  # edit feature globs after bootstrap
 ```
 
 ## Usage in Cursor
@@ -36,10 +37,10 @@ cp assets/templates/cursor/skills/plan-docs-standardization/SKILL.md \
 | Trigger | Purpose |
 |---------|---------|
 | `/docs-bootstrap` | Plan canonical docs structure for a new project |
-| `/docs-audit` | Audit existing docs and produce an alignment plan |
+| `/docs-audit` | Full compliance audit (docs + code traceability) and alignment plan |
 | Skill `plan-docs-standardization` | Same planning workflow, invoked by name |
 
-The always-on rule `.cursor/rules/docs-first-workflow.mdc` enforces the Docs-First workflow and working principles in every session.
+The always-on rule `.cursor/rules/docs-first-workflow.mdc` enforces the Docs-First workflow and working principles in every session. File-specific rule `.cursor/rules/docs-first-implementation.mdc` applies when editing source or test files.
 
 ## Claude Code parity
 

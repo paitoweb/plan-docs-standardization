@@ -739,6 +739,8 @@ def sort_findings(findings: list[Finding]) -> list[Finding]:
 
 
 def audit_repository(repo: Path) -> dict[str, Any]:
+    import audit_code_traceability as act  # noqa: E402
+
     repo = repo.resolve()
     findings: list[Finding] = []
 
@@ -760,6 +762,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_markdown_links(repo, findings)
     check_mkdocs_nav(repo, findings)
     check_ai_instruction_files(repo, findings)
+    findings.extend(act.audit_code_traceability(repo))
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)

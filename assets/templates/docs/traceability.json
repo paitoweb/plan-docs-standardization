@@ -1,0 +1,10 @@
+{
+  "features": [
+    {
+      "feature_dir": "{{FEATURE_ID}}",
+      "source_globs": ["src/**/*.ts"],
+      "test_globs": ["tests/**/*.ts"],
+      "exclude_globs": ["src/**/types.ts", "src/**/index.ts"]
+    }
+  ]
+}

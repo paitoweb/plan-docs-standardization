@@ -1,0 +1,40 @@
+---
+description: Enforce REQ citations and test traceability when editing source or test files
+globs: "**/*.{ts,tsx,js,jsx,dart,py,go,rs,swift,kt}"
+alwaysApply: false
+---
+
+# Docs-First Implementation
+
+When creating or modifying source or test files mapped in `docs/traceability.json`:
+
+## Source files
+
+- Add or preserve a file-level or construct-level comment citing the `REQ-*` being implemented.
+- Cited REQ IDs MUST exist in the matching feature README under `docs/features/<feature>/`.
+- Do not implement behavior that has no corresponding REQ — add the REQ to the spec first.
+
+Example (TypeScript):
+
+```typescript
+/**
+ * REQ-PLATFORM-INFRA-003 — Static site via S3 and CloudFront.
+ */
+export class StaticSiteService { ... }
+```
+
+## Test files
+
+- Every test file MUST contain at least one `Traceability:` comment referencing `AC-*` or `REQ-*`.
+- Tests should map to acceptance criteria from the feature README.
+
+Example:
+
+```typescript
+// Traceability: AC-PLATFORM-INFRA-004 (REQ-PLATFORM-INFRA-004)
+test("synth creates EnliveFunPublicProd stack", () => { ... });
+```
+
+## After editing
+
+Run `/docs-audit` and fix all BLOCKER findings before finishing.

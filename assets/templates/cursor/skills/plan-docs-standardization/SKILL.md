@@ -98,6 +98,14 @@ Optional machine format:
 python3 .resources/plan-docs-standardization/scripts/build_docs_alignment_plan.py . --format json
 ```
 
+### 3) Audit code traceability only (read-only)
+
+`audit_docs_model.py` already includes code traceability. Use this only to inspect traceability findings in isolation:
+
+```bash
+python3 .resources/plan-docs-standardization/scripts/audit_code_traceability.py .
+```
+
 ## Template Usage
 
 Use templates from `.resources/plan-docs-standardization/assets/templates/` to propose missing files in diffs.
