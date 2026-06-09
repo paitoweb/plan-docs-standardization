@@ -582,6 +582,44 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
             )
 
 
+def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
+    canonical = load_canonical_sections()
+
+    for rel in AI_INSTRUCTION_FILES:
+        path = repo / rel
+        if not path.exists():
+            make_finding(
+                findings,
+                "INFO",
+                "AI_INSTRUCTION_FILE_ABSENT",
+                rel,
+                "AI instruction file absent; skill does not create it. "
+                "Create it manually to receive the canonical guidelines.",
+            )
+            continue
+
+        text = path.read_text(encoding="utf-8")
+        for heading in AI_INSTRUCTION_SECTION_HEADINGS:
+            file_section = extract_section(text, heading)
+            if file_section is None:
+                make_finding(
+                    findings,
+                    "BLOCKER",
+                    "AI_INSTRUCTION_SECTION_MISSING",
+                    rel,
+                    f"AI instruction file missing canonical section: {heading}",
+                )
+                continue
+            if normalize_block(file_section) != normalize_block(canonical[heading]):
+                make_finding(
+                    findings,
+                    "BLOCKER",
+                    "AI_INSTRUCTION_SECTION_DIVERGENT",
+                    rel,
+                    f"AI instruction section diverges from canonical: {heading}",
+                )
+
+
 def summarize(findings: list[Finding]) -> AuditSummary:
     summary = AuditSummary()
     for finding in findings:
@@ -625,6 +663,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_nfr_file(nfr_file, repo, findings)
     check_markdown_links(repo, findings)
     check_mkdocs_nav(repo, findings)
+    check_ai_instruction_files(repo, findings)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)
