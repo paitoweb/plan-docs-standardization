@@ -22,6 +22,9 @@ SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
 
 CREATE_CODES = {"MISSING_REQUIRED_FILE", "MISSING_FEATURE_FILE"}
 
+IGNORE_ACTION_CODES = {"AI_INSTRUCTION_FILE_ABSENT"}
+AI_INSTRUCTION_FILES = set(adm.AI_INSTRUCTION_FILES)
+
 PLACEHOLDER_HINTS = (
     "[describe",
     "[item",
@@ -129,6 +132,48 @@ def placeholder_update_diff(target_rel: str, reasons: list[str]) -> str:
     )
 
 
+def _section_diff_block(target_rel: str, file_lines: list[str], heading: str, canonical_section: str) -> str | None:
+    span = adm.section_span(file_lines, heading)
+    new_lines = canonical_section.splitlines()
+
+    if span is None:
+        start = len(file_lines)
+        added = [""] + new_lines
+        header = f"@@ -{start},0 +{start + 1},{len(added)} @@"
+        body = [f"--- a/{target_rel}", f"+++ b/{target_rel}", header]
+        body.extend(f"+{line}" for line in added)
+        return "\n".join(body)
+
+    start, end = span
+    old_lines = file_lines[start:end]
+    if adm.normalize_block("\n".join(old_lines)) == adm.normalize_block(canonical_section):
+        return None
+
+    header = f"@@ -{start + 1},{len(old_lines)} +{start + 1},{len(new_lines)} @@"
+    body = [f"--- a/{target_rel}", f"+++ b/{target_rel}", header]
+    body.extend(f"-{line}" for line in old_lines)
+    body.extend(f"+{line}" for line in new_lines)
+    return "\n".join(body)
+
+
+def ai_instruction_update_diff(repo: Path, target_rel: str) -> str:
+    # Each section produces an independent hunk computed against the original file;
+    # offsets are not re-based across hunks. The result is a human-facing proposed
+    # diff for review, not a patch intended for `git apply`.
+    canonical = adm.load_canonical_sections()
+    file_path = repo / target_rel
+    text = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
+    file_lines = text.splitlines()
+
+    blocks: list[str] = []
+    for heading in adm.AI_INSTRUCTION_SECTION_HEADINGS:
+        block = _section_diff_block(target_rel, file_lines, heading, canonical[heading])
+        if block:
+            blocks.append(block)
+
+    return "\n\n".join(blocks) if blocks else "No changes required."
+
+
 def placeholder_marker_count(content: str) -> int:
     lowered = content.lower()
     count = sum(lowered.count(marker) for marker in PLACEHOLDER_HINTS)
@@ -156,6 +201,8 @@ def collect_actions(result: dict[str, Any]) -> tuple[list[str], list[str]]:
         path = finding["path"]
         code = finding["code"]
 
+        if code in IGNORE_ACTION_CODES:
+            continue
         if code in CREATE_CODES:
             create.add(path)
         else:
@@ -224,6 +271,15 @@ def proposed_diffs(
     for target_rel in alter_files:
         if len(items) >= max_diffs:
             break
+        if target_rel in AI_INSTRUCTION_FILES:
+            items.append(
+                {
+                    "path": target_rel,
+                    "type": "update",
+                    "diff": ai_instruction_update_diff(repo, target_rel),
+                }
+            )
+            continue
         reasons = grouped_reasons.get(target_rel, ["Update to comply with the canonical model"])  # pragma: no cover
         items.append(
             {
@@ -316,6 +372,19 @@ def build_markdown(
     else:
         lines.append("- None")
 
+    absent_ai_files = [
+        finding["path"]
+        for finding in result["findings"]
+        if finding.get("code") == "AI_INSTRUCTION_FILE_ABSENT"
+    ]
+    lines.append("")
+    lines.append("### AI Instruction Files Absent (not created by design)")
+    if absent_ai_files:
+        for path in absent_ai_files:
+            lines.append(f"- `{path}`: present-only check; create manually to receive guidelines.")
+    else:
+        lines.append("- None")
+
     lines.append("")
     lines.append("## Proposed Diffs (not applied)")
     lines.append("")
@@ -356,6 +425,12 @@ def main(argv: list[str]) -> int:
         max_diffs=args.max_diffs,
     )
 
+    absent_ai_files = [
+        finding["path"]
+        for finding in audit_result["findings"]
+        if finding["code"] == "AI_INSTRUCTION_FILE_ABSENT"
+    ]
+
     output = {
         "repository": str(repo),
         "mode": audit_result["mode"],
@@ -365,6 +440,7 @@ def main(argv: list[str]) -> int:
         "deferred_create_files": deferred_create,
         "alter_files": alter_files,
         "diffs": diffs,
+        "absent_ai_files": absent_ai_files,
     }
 
     if args.format == "json":

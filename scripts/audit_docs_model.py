@@ -36,6 +36,20 @@ REQUIRED_FILES = [
 
 FEATURE_REQUIRED_FILES = ["README.md", "flows.md", "rules.md", "notes.md"]
 
+AI_INSTRUCTION_FILES = [
+    "CLAUDE.md",
+    "AGENTS.md",
+    "GEMINI.md",
+    ".github/copilot-instructions.md",
+]
+
+AI_INSTRUCTION_SECTION_HEADINGS = [
+    "## Workflow: New Feature",
+    "## Working Principles",
+]
+
+CANONICAL_GUIDELINES_REL = "assets/templates/ai-instructions/guidelines.en.md"
+
 IGNORED_FILE_NAMES = {".DS_Store"}
 IGNORED_PATH_PARTS = {".obsidian", "__pycache__"}
 
@@ -82,6 +96,65 @@ def normalize_text(value: str) -> str:
     normalized = unicodedata.normalize("NFD", value)
     no_accents = "".join(ch for ch in normalized if not unicodedata.combining(ch))
     return no_accents.lower()
+
+
+def skill_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def section_span(lines: list[str], heading: str) -> tuple[int, int] | None:
+    """Return (start, end) line indices of a level-2 section, end exclusive."""
+
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index
+            break
+    if start is None:
+        return None
+
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        if lines[index].lstrip().startswith("## "):
+            end = index
+            break
+    return start, end
+
+
+def extract_section(text: str, heading: str) -> str | None:
+    lines = text.splitlines()
+    span = section_span(lines, heading)
+    if span is None:
+        return None
+    start, end = span
+    return "\n".join(lines[start:end])
+
+
+def normalize_block(text: str) -> str:
+    lines = [line.strip() for line in text.splitlines()]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+
+    collapsed: list[str] = []
+    for line in lines:
+        if not line and collapsed and not collapsed[-1]:
+            continue
+        collapsed.append(line)
+    return "\n".join(collapsed)
+
+
+def load_canonical_sections() -> dict[str, str]:
+    template_path = skill_root() / CANONICAL_GUIDELINES_REL
+    text = template_path.read_text(encoding="utf-8")
+    sections: dict[str, str] = {}
+    for heading in AI_INSTRUCTION_SECTION_HEADINGS:
+        section = extract_section(text, heading)
+        if section is None:
+            raise ValueError(f"Canonical template missing section: {heading}")
+        sections[heading] = section
+    return sections
 
 
 def should_ignore_path(path: Path) -> bool:
@@ -509,6 +582,44 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
             )
 
 
+def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
+    canonical = load_canonical_sections()
+
+    for rel in AI_INSTRUCTION_FILES:
+        path = repo / rel
+        if not path.exists():
+            make_finding(
+                findings,
+                "INFO",
+                "AI_INSTRUCTION_FILE_ABSENT",
+                rel,
+                "AI instruction file absent; skill does not create it. "
+                "Create it manually to receive the canonical guidelines.",
+            )
+            continue
+
+        text = path.read_text(encoding="utf-8")
+        for heading in AI_INSTRUCTION_SECTION_HEADINGS:
+            file_section = extract_section(text, heading)
+            if file_section is None:
+                make_finding(
+                    findings,
+                    "BLOCKER",
+                    "AI_INSTRUCTION_SECTION_MISSING",
+                    rel,
+                    f"AI instruction file missing canonical section: {heading}",
+                )
+                continue
+            if normalize_block(file_section) != normalize_block(canonical[heading]):
+                make_finding(
+                    findings,
+                    "BLOCKER",
+                    "AI_INSTRUCTION_SECTION_DIVERGENT",
+                    rel,
+                    f"AI instruction section diverges from canonical: {heading}",
+                )
+
+
 def summarize(findings: list[Finding]) -> AuditSummary:
     summary = AuditSummary()
     for finding in findings:
@@ -552,6 +663,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_nfr_file(nfr_file, repo, findings)
     check_markdown_links(repo, findings)
     check_mkdocs_nav(repo, findings)
+    check_ai_instruction_files(repo, findings)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)

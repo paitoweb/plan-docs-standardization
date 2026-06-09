@@ -68,6 +68,30 @@ Where:
 - editor-specific metadata
 - OS cache files
 
+## AI Instruction Files (optional, never created)
+
+The skill optionally aligns AI instruction files when they already exist. It never
+creates them.
+
+Target files (repository root, plus the GitHub path):
+
+- `CLAUDE.md`
+- `AGENTS.md`
+- `GEMINI.md`
+- `.github/copilot-instructions.md`
+
+Canonical guidelines block (single source of truth, English only):
+
+- `assets/templates/ai-instructions/guidelines.en.md`
+
+It defines two sections, located by title:
+
+- `## Workflow: New Feature`
+- `## Working Principles`
+
+For an existing file: a missing section or a section whose normalized content diverges
+from the canonical block is a `BLOCKER`; an absent file is `INFO`.
+
 ## Output Contract
 
 The planning output must always include:
