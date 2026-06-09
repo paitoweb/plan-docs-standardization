@@ -42,7 +42,7 @@ Apply these defaults:
 - Required root docs include `docs/reports/README.md`, `mkdocs.yml`, and `docs/requirements-mkdocs.txt`
 - Ignore non-canonical artifacts: `.DS_Store`, `.obsidian`, editor/system files
 - AI instruction files are optional and never created; only existing ones are audited and proposed for alignment
-- Alignment is language-agnostic: feature-section expectations are inferred from the project's own docs, and AI-instruction sections are detected structurally; bundled templates and bootstrap stay English
+- Alignment is language-agnostic: feature-section expectations are inferred by strict majority of the project's own feature docs (`WARN`), and AI-instruction sections are detected structurally (`BLOCKER`); bundled templates and bootstrap stay English
 
 ## Required Output Shape
 

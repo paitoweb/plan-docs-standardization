@@ -28,15 +28,16 @@ Every `docs/features/<feature>/` directory must contain:
 - `rules.md`
 - `notes.md`
 
-### R003 Feature README section consistency (BLOCKER)
+### R003 Feature README section consistency (WARN)
 
 In alignment mode, the expected section set is inferred from the project's own feature
-READMEs: the reference is the feature README with the most distinct level-2 sections
-(ties break toward the alphabetically first feature). Every other feature README must
-contain the same section set (compared by normalized heading text — trimmed, lowercased,
-accent- and trailing-parenthetical-stripped). A README missing a reference section is
-non-compliant (`FEATURE_SECTION_INCONSISTENT`). With fewer than two feature READMEs, no
-consistency check runs. The skill never compares against fixed English headings.
+READMEs by strict majority: a section is expected when more than half of the feature
+READMEs use it (compared by normalized heading text — trimmed, lowercased, accent- and
+trailing-parenthetical-stripped). A feature README missing an expected section is
+reported as `WARN` (`FEATURE_SECTION_INCONSISTENT`). A section unique to one richer
+feature is never expected of the others, so it does not cascade. With fewer than two
+feature READMEs, no consistency check runs. The skill never compares against fixed
+English headings.
 
 ### R004 ID format validity (BLOCKER)
 
@@ -87,7 +88,8 @@ creates these files.
 Use strict immediate alignment defaults:
 
 - Required file missing => `BLOCKER`
-- Required section missing => `BLOCKER`
+- AI instruction workflow/principles section missing => `BLOCKER`
+- Feature README section missing from the majority => `WARN`
 - Broken traceability => `BLOCKER`
 - Broken links or nav references => `BLOCKER`
 
