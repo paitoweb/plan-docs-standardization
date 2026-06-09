@@ -119,4 +119,8 @@ Additionally, the skill must never create AI instruction files. For absent
 `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.github/copilot-instructions.md`, output only an
 INFO finding instructing manual creation.
 
+For Cursor projects (`.cursor/` present), the same rules apply to
+`.cursor/rules/docs-first-workflow.mdc`. Use `assets/templates/cursor/` to install
+Cursor rules, commands, and skills without affecting Claude Code setup.
+
 Output only diagnostics and planning artifacts.

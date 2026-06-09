@@ -1,0 +1,44 @@
+---
+description: Docs-First development workflow and working principles for AI-assisted implementation
+alwaysApply: true
+---
+
+# Docs-First Workflow
+
+Structured documentation leads development. AI implements from documented decisions — not ad hoc prompts.
+
+## Workflow: New Feature
+
+Steps in order — each typically corresponds to one interaction. Steps may be combined when the feature is small.
+
+**IMPORTANT**: Before advancing to any step, verify that the previous ones were completed. If the user asks to implement without docs, requirements, and a plan in place, question it and guide them back to the correct step.
+
+1. **Brainstorm** — align intent and technical choices with the user.
+2. **Spec** — create the feature structure under `docs/features/<feature>/` (if it does not exist) and write it with concrete REQs/ACs.
+3. **Plan** — analyze the documentation and create an implementation plan.
+4. **Review** — review and approve the plan with the user.
+5. **Implementation** — implement the approved plan, using TDD when applicable.
+6. **Document** — update `ROADMAP.md`, `BACKLOG.md`, `DECISIONS.md`, `ARCHITECTURE.md` as needed, and whatever the feature needs under `docs/features/<feature>/`.
+7. **Tests** — create/update tests (following the traceability principle) and validate.
+8. **Commit & PR** — commit following conventions and open a PR referencing REQ-AC and linking to the feature doc.
+
+## Working Principles
+
+- **Clarify before implementing**: when in doubt, ask — never assume product requirements, technical requirements, engineering principles, or hard constraints.
+- **Distinguish assumption from fact**: make explicit when something is your own conclusion, a hypothesis, or an assumption vs. established project data/rule.
+- **Official docs for APIs**: for libraries and SDKs, rely only on official documentation — never assume signatures, methods, or behaviors.
+- **Pragmatism**: be practical and direct. Do not invent out-of-scope features. Do not ramble.
+- **Traceability**: traceability is mandatory at three ends: documented requirement (`REQ-*` under `docs/features/`), **source code that implements a REQ cites the ID** (function/constant doc comment or file header), and tests include a traceability comment pointing to the doc.
+
+## Documentation Model
+
+Canonical structure lives under `docs/` with MkDocs (`mkdocs.yml`). ID conventions:
+
+| Type | Format | Example |
+|------|--------|---------|
+| Functional requirement | `REQ-<FEATURE>-NNN` | `REQ-AUTH-001` |
+| Acceptance criterion | `AC-<FEATURE>-NNN` | `AC-AUTH-001` |
+| Non-functional requirement | `NFR-NNN` | `NFR-001` |
+| NFR acceptance criterion | `AC-NFR-NNN` | `AC-NFR-001` |
+
+Use the `plan-docs-standardization` skill (`.cursor/skills/plan-docs-standardization/`) or `/docs-audit` to validate compliance. Use `/docs-bootstrap` for new projects without docs.

@@ -1,6 +1,7 @@
 ---
 name: plan-docs-standardization
 description: Plan strict documentation standardization using a canonical docs model (MkDocs + docs/ tree) for new or existing repositories. Use when the user asks to create documentation from zero, audit documentation compliance, align partial docs to a shared template, enforce REQ/AC/NFR traceability, or generate a non-mutating alignment plan with proposed diffs.
+disable-model-invocation: true
 ---
 
 # Plan Docs Standardization
@@ -33,8 +34,8 @@ Use a strict canonical model and return an executable alignment plan without mut
 ## Canonical Model
 
 Read the canonical model from:
-- `references/docs-model-spec.md`
-- `references/compliance-rules.md`
+- `.resources/plan-docs-standardization/references/docs-model-spec.md`
+- `.resources/plan-docs-standardization/references/compliance-rules.md`
 
 Apply these defaults:
 - Language: `en`
@@ -70,36 +71,36 @@ Always return these sections, in this order:
 ## Scripted Operations
 
 Prefer bundled scripts instead of ad-hoc checks.
-Do not create files directly from `assets/templates/`; generate plan output from scripts only.
+Do not create files directly from templates; generate plan output from scripts only.
 
 ### 1) Audit compliance (read-only)
 
 ```bash
-python3 scripts/audit_docs_model.py <repo-path>
+python3 .resources/plan-docs-standardization/scripts/audit_docs_model.py .
 ```
 
 Optional formats:
 
 ```bash
-python3 scripts/audit_docs_model.py <repo-path> --format json
-python3 scripts/audit_docs_model.py <repo-path> --format markdown
+python3 .resources/plan-docs-standardization/scripts/audit_docs_model.py . --format json
+python3 .resources/plan-docs-standardization/scripts/audit_docs_model.py . --format markdown
 ```
 
 ### 2) Build alignment plan (read-only)
 
 ```bash
-python3 scripts/build_docs_alignment_plan.py <repo-path>
+python3 .resources/plan-docs-standardization/scripts/build_docs_alignment_plan.py .
 ```
 
 Optional machine format:
 
 ```bash
-python3 scripts/build_docs_alignment_plan.py <repo-path> --format json
+python3 .resources/plan-docs-standardization/scripts/build_docs_alignment_plan.py . --format json
 ```
 
 ## Template Usage
 
-Use templates from `assets/templates/` to propose missing files in diffs.
+Use templates from `.resources/plan-docs-standardization/assets/templates/` to propose missing files in diffs.
 
 - Root docs templates: `assets/templates/docs/*`
 - MkDocs template: `assets/templates/mkdocs.yml`
@@ -120,16 +121,14 @@ Template tokens available:
 
 Optionally align existing AI instruction files to the canonical guidelines block.
 
-- Target files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`.
-- Cursor target (when `.cursor/` exists): `.cursor/rules/docs-first-workflow.mdc`.
-  Install via `assets/templates/cursor/` (see `assets/templates/cursor/README.md`).
-- Canonical block (English only): `assets/templates/ai-instructions/guidelines.en.md`,
-  with sections `## Workflow: New Feature` and `## Working Principles`.
+**Claude Code / generic targets:** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`.
+
+**Cursor target:** `.cursor/rules/docs-first-workflow.mdc` (must contain workflow + principles sections structurally).
+
+- Canonical block (English only): `.resources/plan-docs-standardization/assets/templates/ai-instructions/guidelines.en.md`
 - Never create these files. If absent, emit an `INFO` finding instructing manual creation.
-- If a file exists, the skill detects a workflow section (numbered steps) and a principles
-  section (bulleted list) structurally, independent of language. Missing either is a
-  `BLOCKER`; the proposed diff appends the English canonical block as a starting point to
-  translate. Never apply changes.
+- If a file exists, detect workflow section (numbered steps) and principles section (bulleted list) structurally, independent of language. Missing either is a `BLOCKER`.
+- Never apply changes as part of this skill.
 
 ## Escalation Policy
 

@@ -4,7 +4,7 @@ A Claude Code skill that enforces a canonical documentation model for AI-driven 
 
 ## What is this?
 
-This is a reusable skill for [Claude Code](https://docs.claude.com) that implements the documentation layer of the **Docs-First** method — an approach where structured documentation leads development, and AI implements from documented decisions rather than ad hoc prompts.
+This is a reusable skill for [Claude Code](https://docs.claude.com) and [Cursor](https://cursor.com/docs) that implements the documentation layer of the **Docs-First** method — an approach where structured documentation leads development, and AI implements from documented decisions rather than ad hoc prompts.
 
 📖 **Read the full article about the Docs-First method:** [Link to article]
 
@@ -109,13 +109,31 @@ Behavior:
    cp -r plan-docs-standardization /your-project/.claude/skills/
    ```
 
+### As a Cursor project (Docs-First)
+
+1. Link or clone this repository (see `assets/templates/cursor/README.md`).
+2. Copy Cursor templates into your project:
+   ```bash
+   PROJECT=/path/to/your-project
+   mkdir -p "$PROJECT/.cursor/rules" "$PROJECT/.cursor/commands" \
+            "$PROJECT/.cursor/skills/plan-docs-standardization"
+   cp assets/templates/cursor/rules/docs-first-workflow.mdc "$PROJECT/.cursor/rules/"
+   cp assets/templates/cursor/commands/*.md "$PROJECT/.cursor/commands/"
+   cp assets/templates/cursor/skills/plan-docs-standardization/SKILL.md \
+      "$PROJECT/.cursor/skills/plan-docs-standardization/"
+   ln -sf ../../plan-docs-standardization "$PROJECT/.resources/plan-docs-standardization"
+   ```
+3. Use `/docs-bootstrap` or `/docs-audit` in Cursor chat, or invoke the `plan-docs-standardization` skill.
+
+Claude Code installation above is unchanged. Cursor uses `.cursor/rules/docs-first-workflow.mdc` instead of `CLAUDE.md`.
+
 ## Usage
 
 ### Bootstrap a new project
 
 ```
-/plan-docs-standardization Let's start a new project called MyApp. 
-It should be a web application for [description]. 
+/plan-docs-standardization Let's start a new project called MyApp.
+It should be a web application for [description].
 Create the initial project structure and documentation.
 ```
 
@@ -124,7 +142,7 @@ The skill will generate a complete documentation plan based on your description.
 ### Audit an existing project
 
 ```
-/plan-docs-standardization Audit the documentation in this repository 
+/plan-docs-standardization Audit the documentation in this repository
 and create an alignment plan.
 ```
 

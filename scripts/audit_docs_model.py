@@ -43,6 +43,11 @@ AI_INSTRUCTION_FILES = [
     ".github/copilot-instructions.md",
 ]
 
+# Cursor: workflow/principles live in an always-on project rule.
+CURSOR_AI_INSTRUCTION_FILES = [
+    ".cursor/rules/docs-first-workflow.mdc",
+]
+
 AI_INSTRUCTION_SECTION_HEADINGS = [
     "## Workflow: New Feature",
     "## Working Principles",
@@ -670,7 +675,10 @@ def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
 
 
 def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
-    for rel in AI_INSTRUCTION_FILES:
+    targets = list(AI_INSTRUCTION_FILES)
+    if (repo / ".cursor").is_dir():
+        targets.extend(CURSOR_AI_INSTRUCTION_FILES)
+    for rel in targets:
         path = repo / rel
         if not path.exists():
             make_finding(

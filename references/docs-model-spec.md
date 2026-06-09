@@ -78,6 +78,10 @@ Target files (repository root, plus the GitHub path):
 - `GEMINI.md`
 - `.github/copilot-instructions.md`
 
+When the repository uses Cursor (`.cursor/` directory exists), also audit:
+
+- `.cursor/rules/docs-first-workflow.mdc`
+
 Canonical guidelines block (single source of truth, English only):
 
 - `assets/templates/ai-instructions/guidelines.en.md`

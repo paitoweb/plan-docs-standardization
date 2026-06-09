@@ -1,0 +1,34 @@
+# Docs Audit
+
+Audit existing documentation against the canonical Docs-First model and produce a non-mutating alignment plan.
+
+## Instructions
+
+1. Read and follow the `plan-docs-standardization` skill at `.cursor/skills/plan-docs-standardization/SKILL.md`.
+2. Run the audit script (read-only):
+
+```bash
+python3 .resources/plan-docs-standardization/scripts/audit_docs_model.py .
+```
+
+Optional JSON output for tooling:
+
+```bash
+python3 .resources/plan-docs-standardization/scripts/audit_docs_model.py . --format json
+```
+
+3. Run the alignment plan builder (read-only):
+
+```bash
+python3 .resources/plan-docs-standardization/scripts/build_docs_alignment_plan.py .
+```
+
+4. Synthesize script output into the required sections:
+   - Executive Summary
+   - Compliance Matrix (BLOCKER/WARN/INFO)
+   - Immediate Alignment Plan
+   - File Create/Alter List
+   - Proposed Diffs (not applied)
+5. Do **not** edit, create, or delete any repository files unless the user explicitly asks to apply the plan.
+
+If `.resources/plan-docs-standardization` is missing, report that the symlink must be created (see `.cursor/README.md`).
