@@ -82,18 +82,7 @@ def test_missing_section_is_blocker(tmp_path):
     blockers = [f for f in findings if f.path == "CLAUDE.md" and f.severity == "BLOCKER"]
     assert len(blockers) == 1
     assert blockers[0].code == "AI_INSTRUCTION_SECTION_MISSING"
-    assert "Working Principles" in blockers[0].message
-
-
-def test_divergent_section_is_blocker(tmp_path):
-    sections = adm.load_canonical_sections()
-    tampered = sections["## Working Principles"].replace("Pragmatism", "Pragmatism CHANGED")
-    text = sections["## Workflow: New Feature"] + "\n\n" + tampered + "\n"
-    (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
-    findings = []
-    adm.check_ai_instruction_files(tmp_path, findings)
-    codes = _codes_for(findings, "CLAUDE.md")
-    assert codes == {"AI_INSTRUCTION_SECTION_DIVERGENT"}
+    assert "principles" in blockers[0].message.lower()
 
 
 def test_copilot_nested_path_detected(tmp_path):

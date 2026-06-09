@@ -67,3 +67,42 @@ def test_compute_feature_section_gaps_tie_breaks_to_alphabetical_first(tmp_path)
     _write_feature(tmp_path, "beta", ["Comum", "Só Beta"])
     gaps = adm.compute_feature_section_gaps(tmp_path)
     assert gaps == {"docs/features/beta/README.md": ["Só Alpha"]}
+
+
+WORKFLOW_PT = "## Workflow: nova feature\n1. Brainstorm\n2. Spec\n3. Plano\n"
+PRINCIPLES_PT = "## Princípios de trabalho\n- Esclarecer\n- Pragmatismo\n- Rastreabilidade\n"
+
+
+def test_detect_shapes_true_for_ptbr_file():
+    text = WORKFLOW_PT + "\n" + PRINCIPLES_PT
+    assert adm.detect_ai_instruction_shapes(text) == (True, True)
+
+
+def test_detect_shapes_requires_distinct_sections():
+    # one section has both an ordered list and bullets; the other is plain prose
+    text = "## Tudo junto\n1. a\n2. b\n3. c\n- x\n- y\n- z\n## Outra\nprosa\n"
+    assert adm.detect_ai_instruction_shapes(text) == (True, False)
+
+
+def test_check_ai_ptbr_file_passes(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text(WORKFLOW_PT + "\n" + PRINCIPLES_PT, encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    assert [f for f in findings if f.path == "CLAUDE.md"] == []
+
+
+def test_check_ai_missing_principles_is_blocker(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text(WORKFLOW_PT, encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    blockers = [f for f in findings if f.path == "CLAUDE.md"]
+    assert len(blockers) == 1
+    assert blockers[0].code == "AI_INSTRUCTION_SECTION_MISSING"
+    assert blockers[0].severity == "BLOCKER"
+
+
+def test_check_ai_absent_is_info(tmp_path):
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    codes = {(f.path, f.code, f.severity) for f in findings}
+    assert ("CLAUDE.md", "AI_INSTRUCTION_FILE_ABSENT", "INFO") in codes

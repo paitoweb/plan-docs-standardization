@@ -655,9 +655,33 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
             )
 
 
-def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
-    canonical = load_canonical_sections()
+def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
+    """Detect (has_workflow, has_principles) by structure, independent of language.
 
+    Workflow = a level-2 section with >=3 ordered-list items.
+    Principles = a *different* level-2 section with >=3 bullet items.
+    """
+
+    sections = iter_level2_sections(text)
+    ordered_indexes = [
+        index
+        for index, section in enumerate(sections)
+        if sum(1 for line in section if ORDERED_ITEM_RE.match(line)) >= 3
+    ]
+    bullet_indexes = [
+        index
+        for index, section in enumerate(sections)
+        if sum(1 for line in section if BULLET_ITEM_RE.match(line)) >= 3
+    ]
+
+    workflow_index = ordered_indexes[0] if ordered_indexes else None
+    principles_index = next(
+        (index for index in bullet_indexes if index != workflow_index), None
+    )
+    return workflow_index is not None, principles_index is not None
+
+
+def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
     for rel in AI_INSTRUCTION_FILES:
         path = repo / rel
         if not path.exists():
@@ -671,26 +695,27 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
             )
             continue
 
-        text = path.read_text(encoding="utf-8")
-        for heading in AI_INSTRUCTION_SECTION_HEADINGS:
-            file_section = extract_section(text, heading)
-            if file_section is None:
-                make_finding(
-                    findings,
-                    "BLOCKER",
-                    "AI_INSTRUCTION_SECTION_MISSING",
-                    rel,
-                    f"AI instruction file missing canonical section: {heading}",
-                )
-                continue
-            if normalize_block(file_section) != normalize_block(canonical[heading]):
-                make_finding(
-                    findings,
-                    "BLOCKER",
-                    "AI_INSTRUCTION_SECTION_DIVERGENT",
-                    rel,
-                    f"AI instruction section diverges from canonical: {heading}",
-                )
+        has_workflow, has_principles = detect_ai_instruction_shapes(
+            path.read_text(encoding="utf-8")
+        )
+        if not has_workflow:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "AI_INSTRUCTION_SECTION_MISSING",
+                rel,
+                "AI instruction file missing a workflow section "
+                "(a heading followed by a numbered list of steps).",
+            )
+        if not has_principles:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "AI_INSTRUCTION_SECTION_MISSING",
+                rel,
+                "AI instruction file missing a principles section "
+                "(a heading followed by a bulleted list).",
+            )
 
 
 def summarize(findings: list[Finding]) -> AuditSummary:
