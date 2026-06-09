@@ -41,6 +41,7 @@ Apply these defaults:
 - Required feature files: `README.md`, `flows.md`, `rules.md`, `notes.md`
 - Required root docs include `docs/reports/README.md`, `mkdocs.yml`, and `docs/requirements-mkdocs.txt`
 - Ignore non-canonical artifacts: `.DS_Store`, `.obsidian`, editor/system files
+- AI instruction files are optional and never created; only existing ones are audited and proposed for alignment
 
 ## Required Output Shape
 
@@ -113,6 +114,17 @@ Template tokens available:
 - `{{FEATURE_NAME}}`
 - `{{FEATURE_ID}}`
 - `{{LAST_UPDATED}}`
+
+## AI Instruction Files Alignment
+
+Optionally align existing AI instruction files to the canonical guidelines block.
+
+- Target files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`.
+- Canonical block (English only): `assets/templates/ai-instructions/guidelines.en.md`,
+  with sections `## Workflow: New Feature` and `## Working Principles`.
+- Never create these files. If absent, emit an `INFO` finding instructing manual creation.
+- If a file exists, missing or divergent canonical sections are `BLOCKER`; propose a diff
+  that appends the missing section or replaces the divergent one. Never apply changes.
 
 ## Escalation Policy
 

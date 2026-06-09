@@ -69,6 +69,21 @@ mkdocs.yml                      # MkDocs configuration
 - All internal markdown links must resolve
 - All `mkdocs.yml` nav references must resolve
 
+## AI instruction files alignment
+
+The skill can align existing AI instruction files to a canonical guidelines block:
+
+- Target files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`
+- Canonical block (English): `assets/templates/ai-instructions/guidelines.en.md`,
+  containing a **Workflow: New Feature** section and a **Working Principles** section.
+
+Behavior:
+
+- The skill **never creates** these files. If a file is absent, it reports INFO and asks
+  you to create it manually.
+- For an existing file, a missing or divergent canonical section is a BLOCKER, and the
+  skill proposes a diff (never applied) to add or restore the canonical block.
+
 ## Installation
 
 ### As a Claude Code user skill
