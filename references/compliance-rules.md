@@ -28,9 +28,15 @@ Every `docs/features/<feature>/` directory must contain:
 - `rules.md`
 - `notes.md`
 
-### R003 Feature README minimum sections (BLOCKER)
+### R003 Feature README section consistency (BLOCKER)
 
-A feature README missing any required section is non-compliant.
+In alignment mode, the expected section set is inferred from the project's own feature
+READMEs: the reference is the feature README with the most distinct level-2 sections
+(ties break toward the alphabetically first feature). Every other feature README must
+contain the same section set (compared by normalized heading text — trimmed, lowercased,
+accent- and trailing-parenthetical-stripped). A README missing a reference section is
+non-compliant (`FEATURE_SECTION_INCONSISTENT`). With fewer than two feature READMEs, no
+consistency check runs. The skill never compares against fixed English headings.
 
 ### R004 ID format validity (BLOCKER)
 
@@ -66,14 +72,10 @@ Non-fatal context can be reported as WARN/INFO, for example:
 
 ### R010 AI instruction section missing (BLOCKER)
 
-For each existing AI instruction file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`,
-`.github/copilot-instructions.md`), a missing canonical section
-(`## Workflow: New Feature` or `## Working Principles`) is non-compliant.
-
-### R011 AI instruction section divergent (BLOCKER)
-
-If a canonical section is present but its normalized content differs from the
-canonical guidelines block, it is non-compliant.
+For each existing AI instruction file, two sections are detected structurally (language
+independent): a workflow section (a heading followed by a numbered list of >=3 steps) and
+a principles section (a different heading followed by a bulleted list of >=3 items). A
+file missing either shape is non-compliant (`AI_INSTRUCTION_SECTION_MISSING`).
 
 ### R012 AI instruction file absent (INFO)
 

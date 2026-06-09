@@ -32,15 +32,12 @@ For each directory under `docs/features/<feature>/`:
 
 ## Feature README Minimum Sections
 
-Each `docs/features/<feature>/README.md` must include:
-
-- `## Overview`
-- `## Requirements (REQ-*)`
-- `## Acceptance Criteria (AC-*)`
-- `## Dependencies`
-- `## Traceability`
-- `## Out of Scope`
-- `## Open Questions`
+The seven canonical sections (Overview, Requirements, Acceptance Criteria, Dependencies,
+Traceability, Out of Scope, Open Questions) are the English baseline used by bootstrap
+templates. In alignment mode the skill does not enforce these English names. Instead it
+infers the expected section set from the project's own feature READMEs (the most complete
+feature is the reference) and requires the other features to be consistent with it, in
+whatever language the project documents.
 
 ## ID Conventions
 
@@ -89,8 +86,10 @@ It defines two sections, located by title:
 - `## Workflow: New Feature`
 - `## Working Principles`
 
-For an existing file: a missing section or a section whose normalized content diverges
-from the canonical block is a `BLOCKER`; an absent file is `INFO`.
+For an existing file, the skill detects two sections structurally, independent of
+language: a workflow section (heading + numbered step list) and a principles section
+(heading + bulleted list). A file missing either shape is a `BLOCKER`; an absent file is
+`INFO`. Content is not compared against the English block, so localized guidelines pass.
 
 ## Output Contract
 

@@ -69,6 +69,11 @@ mkdocs.yml                      # MkDocs configuration
 - All internal markdown links must resolve
 - All `mkdocs.yml` nav references must resolve
 
+> **Language:** Bundled templates are English and bootstrap scaffolds English. In
+> alignment mode the skill is language-agnostic — it infers feature-section expectations
+> from the project's own docs and detects AI-instruction sections structurally, so docs in
+> any language pass without false blockers.
+
 ## AI instruction files alignment
 
 The skill can align existing AI instruction files to a canonical guidelines block:
@@ -81,8 +86,10 @@ Behavior:
 
 - The skill **never creates** these files. If a file is absent, it reports INFO and asks
   you to create it manually.
-- For an existing file, a missing or divergent canonical section is a BLOCKER, and the
-  skill proposes a diff (never applied) to add or restore the canonical block.
+- For an existing file, the skill detects a workflow section (numbered steps) and a
+  principles section (bulleted list) by structure, independent of language. Missing either
+  is a BLOCKER; the proposed diff (never applied) appends the English canonical block as a
+  starting point to translate.
 
 ## Installation
 
