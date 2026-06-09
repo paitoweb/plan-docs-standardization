@@ -36,16 +36,6 @@ def test_ai_instruction_update_diff_appends_missing_section(tmp_path):
     assert "## Workflow: New Feature" not in diff.replace("+## Working Principles", "")
 
 
-def test_ai_instruction_update_diff_replaces_divergent_section(tmp_path):
-    sections = adm.load_canonical_sections()
-    tampered = sections["## Working Principles"].replace("Pragmatism", "Pragmatism CHANGED")
-    text = sections["## Workflow: New Feature"] + "\n\n" + tampered + "\n"
-    (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
-    diff = plan.ai_instruction_update_diff(tmp_path, "CLAUDE.md")
-    assert "-- **Pragmatism CHANGED**" in diff or "-- **Pragmatism CHANGED**: " in diff
-    assert "+- **Pragmatism**" in diff
-
-
 def test_ai_instruction_update_diff_identical_file_reports_no_changes(tmp_path):
     sections = adm.load_canonical_sections()
     text = "# Project\n\n" + "\n\n".join(

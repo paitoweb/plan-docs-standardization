@@ -132,44 +132,50 @@ def placeholder_update_diff(target_rel: str, reasons: list[str]) -> str:
     )
 
 
-def _section_diff_block(target_rel: str, file_lines: list[str], heading: str, canonical_section: str) -> str | None:
-    span = adm.section_span(file_lines, heading)
-    new_lines = canonical_section.splitlines()
-
-    if span is None:
-        start = len(file_lines)
-        added = [""] + new_lines
-        header = f"@@ -{start},0 +{start + 1},{len(added)} @@"
-        body = [f"--- a/{target_rel}", f"+++ b/{target_rel}", header]
-        body.extend(f"+{line}" for line in added)
-        return "\n".join(body)
-
-    start, end = span
-    old_lines = file_lines[start:end]
-    if adm.normalize_block("\n".join(old_lines)) == adm.normalize_block(canonical_section):
-        return None
-
-    header = f"@@ -{start + 1},{len(old_lines)} +{start + 1},{len(new_lines)} @@"
+def _append_block_diff(target_rel: str, file_lines: list[str], block_text: str, label: str | None = None) -> str:
+    added: list[str] = [""]
+    if label:
+        added.append(label)
+    added.extend(block_text.splitlines())
+    start = len(file_lines)
+    header = f"@@ -{start},0 +{start + 1},{len(added)} @@"
     body = [f"--- a/{target_rel}", f"+++ b/{target_rel}", header]
-    body.extend(f"-{line}" for line in old_lines)
-    body.extend(f"+{line}" for line in new_lines)
+    body.extend(f"+{line}" for line in added)
+    return "\n".join(body)
+
+
+def feature_section_append_diff(repo: Path, target_rel: str, missing_titles: list[str]) -> str:
+    file_path = repo / target_rel
+    text = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
+    file_lines = text.splitlines()
+    added: list[str] = []
+    for title in missing_titles:
+        added.extend(["", f"## {title}", ""])
+    start = len(file_lines)
+    header = f"@@ -{start},0 +{start + 1},{len(added)} @@"
+    body = [f"--- a/{target_rel}", f"+++ b/{target_rel}", header]
+    body.extend(f"+{line}" for line in added)
     return "\n".join(body)
 
 
 def ai_instruction_update_diff(repo: Path, target_rel: str) -> str:
-    # Each section produces an independent hunk computed against the original file;
-    # offsets are not re-based across hunks. The result is a human-facing proposed
-    # diff for review, not a patch intended for `git apply`.
+    # Proposes the English canonical block as a labeled starting point for any
+    # structurally-missing section. Human-facing; not intended for `git apply`.
     canonical = adm.load_canonical_sections()
     file_path = repo / target_rel
     text = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
     file_lines = text.splitlines()
+    has_workflow, has_principles = adm.detect_ai_instruction_shapes(text)
 
+    label = (
+        "<!-- plan-docs-standardization: English starting point — "
+        "translate to your project's language -->"
+    )
     blocks: list[str] = []
-    for heading in adm.AI_INSTRUCTION_SECTION_HEADINGS:
-        block = _section_diff_block(target_rel, file_lines, heading, canonical[heading])
-        if block:
-            blocks.append(block)
+    if not has_workflow:
+        blocks.append(_append_block_diff(target_rel, file_lines, canonical["## Workflow: New Feature"], label))
+    if not has_principles:
+        blocks.append(_append_block_diff(target_rel, file_lines, canonical["## Working Principles"], label))
 
     return "\n\n".join(blocks) if blocks else "No changes required."
 
@@ -268,6 +274,8 @@ def proposed_diffs(
             }
         )
 
+    feature_gaps = adm.compute_feature_section_gaps(repo)
+
     for target_rel in alter_files:
         if len(items) >= max_diffs:
             break
@@ -277,6 +285,15 @@ def proposed_diffs(
                     "path": target_rel,
                     "type": "update",
                     "diff": ai_instruction_update_diff(repo, target_rel),
+                }
+            )
+            continue
+        if target_rel in feature_gaps:
+            items.append(
+                {
+                    "path": target_rel,
+                    "type": "update",
+                    "diff": feature_section_append_diff(repo, target_rel, feature_gaps[target_rel]),
                 }
             )
             continue

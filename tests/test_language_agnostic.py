@@ -117,3 +117,31 @@ def test_check_ai_both_shapes_missing_yields_two_blockers(tmp_path):
     assert all(f.code == "AI_INSTRUCTION_SECTION_MISSING" for f in blockers)
     assert any("workflow" in f.message.lower() for f in blockers)
     assert any("principles" in f.message.lower() for f in blockers)
+
+
+import build_docs_alignment_plan as plan
+
+
+def test_feature_section_append_diff_proposes_missing_headings(tmp_path):
+    d = tmp_path / "docs" / "features" / "beta"
+    d.mkdir(parents=True)
+    (d / "README.md").write_text("## Visão Geral\nx\n", encoding="utf-8")
+    diff = plan.feature_section_append_diff(
+        tmp_path, "docs/features/beta/README.md", ["Dependências", "Questões em Aberto"]
+    )
+    assert "+## Dependências" in diff
+    assert "+## Questões em Aberto" in diff
+
+
+def test_ai_update_diff_appends_missing_principles(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text(WORKFLOW_PT, encoding="utf-8")
+    diff = plan.ai_instruction_update_diff(tmp_path, "CLAUDE.md")
+    assert "+## Working Principles" in diff
+    assert "Working Principles" not in WORKFLOW_PT  # guard: came from canonical, not the file
+
+
+def test_ai_update_diff_identical_reports_no_changes(tmp_path):
+    sections = adm.load_canonical_sections()
+    text = sections["## Workflow: New Feature"] + "\n\n" + sections["## Working Principles"] + "\n"
+    (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
+    assert plan.ai_instruction_update_diff(tmp_path, "CLAUDE.md") == "No changes required."
