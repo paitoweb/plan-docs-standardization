@@ -42,6 +42,7 @@ Apply these defaults:
 - Required root docs include `docs/reports/README.md`, `mkdocs.yml`, and `docs/requirements-mkdocs.txt`
 - Ignore non-canonical artifacts: `.DS_Store`, `.obsidian`, editor/system files
 - AI instruction files are optional and never created; only existing ones are audited and proposed for alignment
+- Alignment is language-agnostic: feature-section expectations are inferred from the project's own docs, and AI-instruction sections are detected structurally; bundled templates and bootstrap stay English
 
 ## Required Output Shape
 
@@ -123,8 +124,10 @@ Optionally align existing AI instruction files to the canonical guidelines block
 - Canonical block (English only): `assets/templates/ai-instructions/guidelines.en.md`,
   with sections `## Workflow: New Feature` and `## Working Principles`.
 - Never create these files. If absent, emit an `INFO` finding instructing manual creation.
-- If a file exists, missing or divergent canonical sections are `BLOCKER`; propose a diff
-  that appends the missing section or replaces the divergent one. Never apply changes.
+- If a file exists, the skill detects a workflow section (numbered steps) and a principles
+  section (bulleted list) structurally, independent of language. Missing either is a
+  `BLOCKER`; the proposed diff appends the English canonical block as a starting point to
+  translate. Never apply changes.
 
 ## Escalation Policy
 

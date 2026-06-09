@@ -63,17 +63,12 @@ CODE_SPAN_RE = re.compile(r"`([^`]+)`")
 AC_HEADING_RE = re.compile(r"^\s*###\s+(AC-[A-Z0-9-]+-\d{3})\b")
 AC_NFR_HEADING_RE = re.compile(r"^\s*###\s+(AC-NFR-\d{3})\b")
 
-SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
+SECTION_HEADING_RE = re.compile(r"^\s*##\s+(.*\S)\s*$")
+TRAILING_PAREN_RE = re.compile(r"\s*\([^)]*\)\s*$")
+ORDERED_ITEM_RE = re.compile(r"^\s*\d+\.\s+\S")
+BULLET_ITEM_RE = re.compile(r"^\s*[-*]\s+\S")
 
-FEATURE_README_REQUIRED_HEADINGS = {
-    "Overview": ["## overview"],
-    "Requirements": ["## requirements"],
-    "Acceptance Criteria": ["## acceptance criteria"],
-    "Dependencies": ["## dependencies"],
-    "Traceability": ["## traceability"],
-    "Out of Scope": ["## out of scope"],
-    "Open Questions": ["## open questions"],
-}
+SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
 
 
 @dataclass
@@ -130,21 +125,6 @@ def extract_section(text: str, heading: str) -> str | None:
     return "\n".join(lines[start:end])
 
 
-def normalize_block(text: str) -> str:
-    lines = [line.strip() for line in text.splitlines()]
-    while lines and not lines[0]:
-        lines.pop(0)
-    while lines and not lines[-1]:
-        lines.pop()
-
-    collapsed: list[str] = []
-    for line in lines:
-        if not line and collapsed and not collapsed[-1]:
-            continue
-        collapsed.append(line)
-    return "\n".join(collapsed)
-
-
 def load_canonical_sections() -> dict[str, str]:
     template_path = skill_root() / CANONICAL_GUIDELINES_REL
     text = template_path.read_text(encoding="utf-8")
@@ -155,6 +135,99 @@ def load_canonical_sections() -> dict[str, str]:
             raise ValueError(f"Canonical template missing section: {heading}")
         sections[heading] = section
     return sections
+
+
+def normalize_section_title(raw_title: str) -> str:
+    title = TRAILING_PAREN_RE.sub("", raw_title).strip()
+    title = re.sub(r"\s+", " ", title)
+    return normalize_text(title)
+
+
+def feature_section_titles(text: str) -> list[tuple[str, str]]:
+    """Return (normalized, original) for each level-2 heading, deduped, in order."""
+
+    seen: set[str] = set()
+    result: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        match = SECTION_HEADING_RE.match(line)
+        if not match:
+            continue
+        original = match.group(1).strip()
+        normalized = normalize_section_title(original)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append((normalized, original))
+    return result
+
+
+def iter_level2_sections(text: str) -> list[list[str]]:
+    """Split text into level-2 sections; lines before the first heading are dropped."""
+
+    sections: list[list[str]] = []
+    current: list[str] | None = None
+    for line in text.splitlines():
+        if SECTION_HEADING_RE.match(line):
+            if current is not None:
+                sections.append(current)
+            current = [line]
+        elif current is not None:
+            current.append(line)
+    if current is not None:
+        sections.append(current)
+    return sections
+
+
+def compute_feature_section_gaps(repo: Path) -> dict[str, list[str]]:
+    """Map each feature README (rel path) to the reference sections it is missing.
+
+    The reference is the feature README with the most distinct level-2 sections;
+    ties break toward the alphabetically first feature directory. Returns {} when
+    there are fewer than two feature READMEs.
+    """
+
+    readmes: list[tuple[str, set[str], dict[str, str]]] = []
+    for feature_dir in collect_feature_dirs(repo):
+        readme = feature_dir / "README.md"
+        if not readme.exists():
+            continue
+        titles = feature_section_titles(readme.read_text(encoding="utf-8"))
+        normalized_set = {normalized for normalized, _ in titles}
+        original_by_normalized = {normalized: original for normalized, original in titles}
+        rel = str(readme.relative_to(repo))
+        readmes.append((rel, normalized_set, original_by_normalized))
+
+    if len(readmes) < 2:
+        return {}
+
+    # readmes is alphabetical (collect_feature_dirs is sorted) and max keeps the first
+    # item on ties, so equal section counts break toward the alphabetically-first feature.
+    reference_rel, _, reference_titles = max(readmes, key=lambda item: len(item[1]))
+
+    gaps: dict[str, list[str]] = {}
+    for rel, normalized_set, _ in readmes:
+        if rel == reference_rel:
+            continue
+        missing = [
+            original
+            for normalized, original in reference_titles.items()
+            if normalized not in normalized_set
+        ]
+        if missing:
+            gaps[rel] = missing
+    return gaps
+
+
+def check_feature_section_consistency(repo: Path, findings: list[Finding]) -> None:
+    for rel, missing in compute_feature_section_gaps(repo).items():
+        make_finding(
+            findings,
+            "BLOCKER",
+            "FEATURE_SECTION_INCONSISTENT",
+            rel,
+            "Feature README missing sections established by the reference feature: "
+            + ", ".join(missing),
+        )
 
 
 def should_ignore_path(path: Path) -> bool:
@@ -228,25 +301,10 @@ def check_feature_files(feature_dir: Path, repo: Path, findings: list[Finding]) 
             )
 
 
-def heading_lines(text: str) -> list[str]:
-    return [normalize_text(line.strip()) for line in text.splitlines() if line.strip()]
-
-
 def check_feature_readme(readme_path: Path, repo: Path, findings: list[Finding]) -> None:
     rel = str(readme_path.relative_to(repo))
     content = readme_path.read_text(encoding="utf-8")
     lines = content.splitlines()
-    normalized_lines = heading_lines(content)
-
-    for heading_name, prefixes in FEATURE_README_REQUIRED_HEADINGS.items():
-        if not any(any(line.startswith(prefix) for prefix in prefixes) for line in normalized_lines):
-            make_finding(
-                findings,
-                "BLOCKER",
-                "MISSING_README_SECTION",
-                rel,
-                f"Feature README missing section: {heading_name}",
-            )
 
     for token in sorted(set(iter_code_span_tokens(content))):
         if token.startswith("REQ-"):
@@ -582,9 +640,33 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
             )
 
 
-def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
-    canonical = load_canonical_sections()
+def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
+    """Detect (has_workflow, has_principles) by structure, independent of language.
 
+    Workflow = a level-2 section with >=3 ordered-list items.
+    Principles = a *different* level-2 section with >=3 bullet items.
+    """
+
+    sections = iter_level2_sections(text)
+    ordered_indexes = [
+        index
+        for index, section in enumerate(sections)
+        if sum(1 for line in section if ORDERED_ITEM_RE.match(line)) >= 3
+    ]
+    bullet_indexes = [
+        index
+        for index, section in enumerate(sections)
+        if sum(1 for line in section if BULLET_ITEM_RE.match(line)) >= 3
+    ]
+
+    workflow_index = ordered_indexes[0] if ordered_indexes else None
+    principles_index = next(
+        (index for index in bullet_indexes if index != workflow_index), None
+    )
+    return workflow_index is not None, principles_index is not None
+
+
+def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
     for rel in AI_INSTRUCTION_FILES:
         path = repo / rel
         if not path.exists():
@@ -598,26 +680,27 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
             )
             continue
 
-        text = path.read_text(encoding="utf-8")
-        for heading in AI_INSTRUCTION_SECTION_HEADINGS:
-            file_section = extract_section(text, heading)
-            if file_section is None:
-                make_finding(
-                    findings,
-                    "BLOCKER",
-                    "AI_INSTRUCTION_SECTION_MISSING",
-                    rel,
-                    f"AI instruction file missing canonical section: {heading}",
-                )
-                continue
-            if normalize_block(file_section) != normalize_block(canonical[heading]):
-                make_finding(
-                    findings,
-                    "BLOCKER",
-                    "AI_INSTRUCTION_SECTION_DIVERGENT",
-                    rel,
-                    f"AI instruction section diverges from canonical: {heading}",
-                )
+        has_workflow, has_principles = detect_ai_instruction_shapes(
+            path.read_text(encoding="utf-8")
+        )
+        if not has_workflow:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "AI_INSTRUCTION_SECTION_MISSING",
+                rel,
+                "AI instruction file missing a workflow section "
+                "(a heading followed by a numbered list of steps).",
+            )
+        if not has_principles:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "AI_INSTRUCTION_SECTION_MISSING",
+                rel,
+                "AI instruction file missing a principles section "
+                "(a heading followed by a bulleted list).",
+            )
 
 
 def summarize(findings: list[Finding]) -> AuditSummary:
@@ -658,6 +741,8 @@ def audit_repository(repo: Path) -> dict[str, Any]:
         readme = feature_dir / "README.md"
         if readme.exists():
             check_feature_readme(readme, repo, findings)
+
+    check_feature_section_consistency(repo, findings)
 
     nfr_file = repo / "docs" / "nfr" / "NON_FUNCTIONAL.md"
     check_nfr_file(nfr_file, repo, findings)
