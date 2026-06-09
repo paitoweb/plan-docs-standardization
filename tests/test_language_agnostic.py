@@ -59,3 +59,11 @@ def test_compute_feature_section_gaps_returns_original_titles(tmp_path):
     _write_feature(tmp_path, "beta", ["Visão Geral", "Requisitos"])
     gaps = adm.compute_feature_section_gaps(tmp_path)
     assert gaps == {"docs/features/beta/README.md": ["Dependências"]}
+
+
+def test_compute_feature_section_gaps_tie_breaks_to_alphabetical_first(tmp_path):
+    # Equal distinct-section counts; alpha must win the reference tie.
+    _write_feature(tmp_path, "alpha", ["Comum", "Só Alpha"])
+    _write_feature(tmp_path, "beta", ["Comum", "Só Beta"])
+    gaps = adm.compute_feature_section_gaps(tmp_path)
+    assert gaps == {"docs/features/beta/README.md": ["Só Alpha"]}

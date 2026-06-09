@@ -215,6 +215,8 @@ def compute_feature_section_gaps(repo: Path) -> dict[str, list[str]]:
     if len(readmes) < 2:
         return {}
 
+    # readmes is alphabetical (collect_feature_dirs is sorted) and max keeps the first
+    # item on ties, so equal section counts break toward the alphabetically-first feature.
     reference_rel, _, reference_titles = max(readmes, key=lambda item: len(item[1]))
 
     gaps: dict[str, list[str]] = {}
