@@ -63,6 +63,11 @@ CODE_SPAN_RE = re.compile(r"`([^`]+)`")
 AC_HEADING_RE = re.compile(r"^\s*###\s+(AC-[A-Z0-9-]+-\d{3})\b")
 AC_NFR_HEADING_RE = re.compile(r"^\s*###\s+(AC-NFR-\d{3})\b")
 
+SECTION_HEADING_RE = re.compile(r"^\s*##\s+(.*\S)\s*$")
+TRAILING_PAREN_RE = re.compile(r"\s*\([^)]*\)\s*$")
+ORDERED_ITEM_RE = re.compile(r"^\s*\d+\.\s+\S")
+BULLET_ITEM_RE = re.compile(r"^\s*[-*]\s+\S")
+
 SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
 
 FEATURE_README_REQUIRED_HEADINGS = {
@@ -154,6 +159,47 @@ def load_canonical_sections() -> dict[str, str]:
         if section is None:
             raise ValueError(f"Canonical template missing section: {heading}")
         sections[heading] = section
+    return sections
+
+
+def normalize_section_title(raw_title: str) -> str:
+    title = TRAILING_PAREN_RE.sub("", raw_title).strip()
+    title = re.sub(r"\s+", " ", title)
+    return normalize_text(title)
+
+
+def feature_section_titles(text: str) -> list[tuple[str, str]]:
+    """Return (normalized, original) for each level-2 heading, deduped, in order."""
+
+    seen: set[str] = set()
+    result: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        match = SECTION_HEADING_RE.match(line)
+        if not match:
+            continue
+        original = match.group(1).strip()
+        normalized = normalize_section_title(original)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append((normalized, original))
+    return result
+
+
+def iter_level2_sections(text: str) -> list[list[str]]:
+    """Split text into level-2 sections; lines before the first heading are dropped."""
+
+    sections: list[list[str]] = []
+    current: list[str] | None = None
+    for line in text.splitlines():
+        if SECTION_HEADING_RE.match(line):
+            if current is not None:
+                sections.append(current)
+            current = [line]
+        elif current is not None:
+            current.append(line)
+    if current is not None:
+        sections.append(current)
     return sections
 
 
