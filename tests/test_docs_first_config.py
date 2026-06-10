@@ -91,3 +91,18 @@ def test_save_config_overwrites_existing(tmp_path):
     dfc.save_config(tmp_path, dfc.DocsFirstConfig(profiles=["cursor"]))
     loaded = dfc.load_config(tmp_path)
     assert loaded.profiles == ["cursor"]
+
+
+def test_parse_config_tolerates_bad_version(tmp_path):
+    # A malformed config must never crash the parser (it feeds the audit gate).
+    cfg = dfc.parse_config("version: notanint\nprofiles: [claude]\n")
+    assert cfg.profiles == ["claude"]
+    assert cfg.version == dfc.SCHEMA_VERSION
+
+
+def test_load_config_with_bad_version_does_not_raise(tmp_path):
+    target = tmp_path / dfc.CONFIG_REL
+    target.parent.mkdir(parents=True)
+    target.write_text("version: oops\nprofiles: [cursor]\n", encoding="utf-8")
+    cfg = dfc.load_config(tmp_path)
+    assert cfg.profiles == ["cursor"]

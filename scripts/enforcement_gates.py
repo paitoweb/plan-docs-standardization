@@ -61,7 +61,12 @@ def render_claude_hooks(audit_cmd: str = DEFAULT_AUDIT_CMD) -> str:
 
 
 def render_codex_hooks(audit_cmd: str = DEFAULT_AUDIT_CMD) -> str:
-    """Codex .codex/hooks.json: PreToolUse on patch/commit; exit 2 (deny) blocks."""
+    """Codex .codex/hooks.json: PreToolUse on patch/commit; exit 2 (deny) blocks.
+
+    Best-effort shape derived from Codex CLI hooks docs (2026); the matcher and event
+    names should be confirmed against the installed Codex CLI version before relying on
+    it as a gate. The skill previews this file before writing it (consent model).
+    """
 
     data = {
         "hooks": {

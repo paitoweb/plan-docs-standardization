@@ -92,13 +92,15 @@ Rationale: LLMs are unreliable at "which model am I"; the harness/filesystem and
 
 Stores **decisions, not observations** (anything derivable from the filesystem is re-derived, not stored):
 
+A **flat** schema (top-level keys, inline lists) is used so a stdlib parser stays trivial and
+crash-free (it feeds the CI/pre-commit gate). It is still valid YAML.
+
 ```yaml
 # .docs-first/config.yml
 version: 1
-profiles: [claude, cursor]        # which profiles the user WANTS active
-enforcement:
-  chosen:   [ci, local-hook]      # accepted gates
-  declined: [claude-hooks]        # refused → never re-ask
+profiles: [claude, cursor]               # which profiles the user WANTS active
+enforcement_chosen: [ci, local-hook]     # accepted gates
+enforcement_declined: [claude-hooks]     # refused → never re-ask
 updated: 2026-06-10
 ```
 

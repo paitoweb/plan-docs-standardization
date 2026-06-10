@@ -42,6 +42,10 @@ def render_config(cfg: DocsFirstConfig) -> str:
 
 
 def _parse_value(raw: str) -> object:
+    # Value space is intentionally narrow: inline lists of bare tokens (profile/gate
+    # keys, which never contain commas) plus scalar strings/ints. Quoted items
+    # containing commas are not supported — the parser must stay trivial and crash-free
+    # because it feeds the CI/pre-commit gate.
     raw = raw.strip()
     if raw.startswith("[") and raw.endswith("]"):
         inner = raw[1:-1].strip()
@@ -51,6 +55,13 @@ def _parse_value(raw: str) -> object:
     if raw.isdigit():
         return int(raw)
     return raw.strip("\"'")
+
+
+def _coerce_int(value: object, default: int) -> int:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
 
 
 def parse_config(text: str) -> DocsFirstConfig:
@@ -67,7 +78,7 @@ def parse_config(text: str) -> DocsFirstConfig:
         enforcement_chosen=list(data.get("enforcement_chosen", []) or []),
         enforcement_declined=list(data.get("enforcement_declined", []) or []),
         updated=(data.get("updated") or None),
-        version=int(data.get("version", SCHEMA_VERSION)),
+        version=_coerce_int(data.get("version", SCHEMA_VERSION), SCHEMA_VERSION),
     )
 
 
