@@ -57,3 +57,19 @@ PROFILES: dict[str, AgentProfile] = {
 
 def get_profile(key: str) -> AgentProfile:
     return PROFILES[key]
+
+
+def detect_signal_profiles(repo: Path) -> list[str]:
+    """Profile keys whose filesystem markers exist in the repo, sorted.
+
+    `generic` has no marker and is never auto-detected.
+    """
+
+    repo = Path(repo)
+    detected = [
+        profile.key
+        for profile in PROFILES.values()
+        if profile.detect_dirs
+        and any((repo / marker).is_dir() for marker in profile.detect_dirs)
+    ]
+    return sorted(detected)

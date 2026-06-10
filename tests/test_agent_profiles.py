@@ -40,3 +40,24 @@ def test_get_profile_unknown_raises():
 
     with pytest.raises(KeyError):
         ap.get_profile("windsurf")
+
+
+def test_detect_empty_repo_returns_no_profiles(tmp_path):
+    assert ap.detect_signal_profiles(tmp_path) == []
+
+
+def test_detect_cursor_and_claude_dirs(tmp_path):
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".cursor").mkdir()
+    assert ap.detect_signal_profiles(tmp_path) == ["claude", "cursor"]
+
+
+def test_detect_codex_via_either_marker(tmp_path):
+    (tmp_path / ".agents").mkdir()
+    assert ap.detect_signal_profiles(tmp_path) == ["codex"]
+
+
+def test_detect_ignores_generic_which_has_no_signal(tmp_path):
+    # generic has empty detect_dirs and must never be auto-detected
+    (tmp_path / "AGENTS.md").write_text("# x\n", encoding="utf-8")
+    assert ap.detect_signal_profiles(tmp_path) == []
