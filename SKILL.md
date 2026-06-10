@@ -122,7 +122,9 @@ Template tokens available:
 
 Optionally align existing AI instruction files to the canonical guidelines block.
 
-- Target files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`.
+- Base target files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`.
+- Plus each active agent profile's soft target (see `## Agent Profiles`): Cursor adds
+  `.cursor/rules/docs-first.mdc`; Codex/generic use `AGENTS.md`.
 - Canonical block (English only): `assets/templates/ai-instructions/guidelines.en.md`,
   with sections `## Workflow: New Feature` and `## Working Principles`.
 - Never create these files. If absent, emit an `INFO` finding instructing manual creation.
@@ -130,6 +132,40 @@ Optionally align existing AI instruction files to the canonical guidelines block
   section (bulleted list) structurally, independent of language. Missing either is a
   `BLOCKER`; the proposed diff appends the English canonical block as a starting point to
   translate. Never apply changes.
+
+## Agent Profiles
+
+The canonical method is single and agnostic; only *delivery* varies per AI agent.
+A profile customizes where the always-on instruction lives and how the skill is
+packaged — never the docs model or the method.
+
+| Profile | Always-on soft target | Skill package dir |
+|---|---|---|
+| claude | `CLAUDE.md` | `.claude/skills/plan-docs-standardization/` |
+| cursor | `.cursor/rules/docs-first.mdc` (frontmatter `alwaysApply: true`) | `.cursor/skills/plan-docs-standardization/` |
+| codex | `AGENTS.md` | `.agents/skills/plan-docs-standardization/` |
+| generic | `AGENTS.md` | (none) |
+
+**Detect → ask → persist (first thing the skill does):**
+
+1. Read `.docs-first/config.yml`. If it lists `profiles`, use them (authoritative).
+2. Else detect by filesystem markers (`.claude/`, `.cursor/`, `.codex/`, `.agents/`).
+3. Else ask the user which agent(s) they use. Never guess from model self-identification.
+4. After resolving (and only with the user's consent), persist the decision:
+   preview `render_config(...)` then write via `save_config(...)`. A read-only audit
+   never writes this file. Record decisions, not observations (do not store "`.cursor/` exists").
+
+**Multiple agents in one repo:** `profiles` is a list. When several are active, propose each
+profile's soft target together; the docs tree and audit are shared.
+
+**Soft-layer install offer:** soft targets are never auto-created (absent → INFO). When a profile
+is active and its surface is absent, offer to install it with consent — for Cursor, generate the
+rule with `python3 scripts/render_profile_artifacts.py cursor > .cursor/rules/docs-first.mdc`.
+For Claude/Codex, append the canonical block to the user's existing `CLAUDE.md`/`AGENTS.md`.
+
+**State file validation:** the audit reads `.docs-first/config.yml` when present and reports
+`DOCS_FIRST_CONFIG_INVALID` (`WARN`) for unknown profile or enforcement-gate keys. Absent file
+is never a finding.
 
 ## Escalation Policy
 
