@@ -17,3 +17,20 @@ def test_soft_block_ends_with_single_newline():
     block = rpa.render_soft_block()
     assert block.endswith("\n")
     assert not block.endswith("\n\n")
+
+
+def test_plain_profiles_return_bare_block():
+    block = rpa.render_soft_block()
+    assert rpa.render_for_profile("claude") == block
+    assert rpa.render_for_profile("codex") == block
+    assert rpa.render_for_profile("generic") == block
+
+
+def test_cursor_profile_wraps_block_in_mdc_frontmatter():
+    out = rpa.render_for_profile("cursor")
+    assert out.startswith("---\n")
+    assert "alwaysApply: true" in out
+    assert "## Workflow: New Feature" in out  # block content preserved
+    # frontmatter then a blank line then the block
+    assert out.startswith(rpa.CURSOR_FRONTMATTER + "\n")
+    assert out.endswith(rpa.render_soft_block())

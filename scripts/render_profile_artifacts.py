@@ -31,3 +31,11 @@ def render_soft_block() -> str:
 
     path = adm.skill_root() / adm.CANONICAL_GUIDELINES_REL
     return path.read_text(encoding="utf-8").strip() + "\n"
+
+
+def render_for_profile(profile_key: str) -> str:
+    profile = ap.get_profile(profile_key)
+    block = render_soft_block()
+    if profile.soft_wrapper == "mdc":
+        return CURSOR_FRONTMATTER + "\n" + block
+    return block
