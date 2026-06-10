@@ -816,6 +816,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_nfr_file(nfr_file, repo, findings)
     check_markdown_links(repo, findings)
     check_mkdocs_nav(repo, findings)
+    check_index_map(repo, findings)
     check_ai_instruction_files(repo, findings)
 
     sorted_findings = sort_findings(findings)

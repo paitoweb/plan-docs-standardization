@@ -83,3 +83,21 @@ def test_pointer_missing_is_never_blocker(tmp_path):
     assert blockers == set()
     info = {f.code for f in findings if f.severity == "INFO" and f.path == "CLAUDE.md"}
     assert info == {"AI_INSTRUCTION_MAP_POINTER_MISSING"}
+
+
+def test_audit_repository_runs_index_map_check(tmp_path):
+    # Minimal repo with a docs/index.md that has no map -> result includes the WARN code.
+    _write_index(tmp_path, "# Docs\n\nno map\n")
+    result = adm.audit_repository(tmp_path)
+    codes = {f["code"] for f in result["findings"]}
+    assert "INDEX_MAP_MISSING" in codes
+
+
+def test_current_state_absence_is_never_a_finding(tmp_path):
+    # A repo without docs/reports/CURRENT_STATE.md must not produce any finding for it.
+    _write_index(tmp_path, "# Docs\n\nno map\n")
+    result = adm.audit_repository(tmp_path)
+    paths = {f["path"] for f in result["findings"]}
+    assert "docs/reports/CURRENT_STATE.md" not in paths
+    codes = {f["code"] for f in result["findings"]}
+    assert not any("CURRENT_STATE" in code for code in codes)
