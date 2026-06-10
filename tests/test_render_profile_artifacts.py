@@ -34,3 +34,27 @@ def test_cursor_profile_wraps_block_in_mdc_frontmatter():
     # frontmatter then a blank line then the block
     assert out.startswith(rpa.CURSOR_FRONTMATTER + "\n")
     assert out.endswith(rpa.render_soft_block())
+
+
+import subprocess
+import sys
+from pathlib import Path
+
+
+def test_cli_prints_profile_artifact():
+    script = Path(__file__).resolve().parent.parent / "scripts" / "render_profile_artifacts.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "cursor"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout == rpa.render_for_profile("cursor")
+
+
+def test_cli_rejects_unknown_profile():
+    script = Path(__file__).resolve().parent.parent / "scripts" / "render_profile_artifacts.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "windsurf"], capture_output=True, text=True
+    )
+    assert result.returncode != 0

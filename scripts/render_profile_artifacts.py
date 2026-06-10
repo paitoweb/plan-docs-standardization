@@ -39,3 +39,15 @@ def render_for_profile(profile_key: str) -> str:
     if profile.soft_wrapper == "mdc":
         return CURSOR_FRONTMATTER + "\n" + block
     return block
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Render per-agent soft-layer artifact")
+    parser.add_argument("profile", choices=sorted(ap.PROFILES))
+    args = parser.parse_args(argv)
+    sys.stdout.write(render_for_profile(args.profile))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
