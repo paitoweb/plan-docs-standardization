@@ -43,6 +43,8 @@ Apply these defaults:
 - Ignore non-canonical artifacts: `.DS_Store`, `.obsidian`, editor/system files
 - AI instruction files are optional and never created; only existing ones are audited and proposed for alignment
 - Alignment is language-agnostic: feature-section expectations are inferred by strict majority of the project's own feature docs (`WARN`), and AI-instruction sections are detected structurally (`BLOCKER`); bundled templates and bootstrap stay English
+- `docs/index.md` is a navigational ownership map (what each doc/folder is for and what must not go in it); operational session-state (branch/PR/deploy) is not design truth and lives in git/PRs or the optional `docs/reports/CURRENT_STATE.md` snapshot — never in ROADMAP/BACKLOG/DECISIONS
+- Alignment adds: `INDEX_MAP_MISSING` (`WARN`) when `index.md` is not a map, and `AI_INSTRUCTION_MAP_POINTER_MISSING` (`INFO`) when an existing AI-instruction file lacks a `docs/index.md` pointer; `CURRENT_STATE.md` is optional and never created
 
 ## Required Output Shape
 

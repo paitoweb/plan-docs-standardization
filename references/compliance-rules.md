@@ -7,6 +7,7 @@ Run checks in read-only mode over:
 - `mkdocs.yml`
 - `docs/**/*.md`
 - `docs/requirements-mkdocs.txt`
+- existing AI-instruction files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`)
 
 Ignore non-canonical paths:
 
@@ -83,6 +84,24 @@ file missing either shape is non-compliant (`AI_INSTRUCTION_SECTION_MISSING`).
 If an AI instruction file does not exist, report it as INFO only. The skill never
 creates these files.
 
+### R013 Documentation map present (WARN)
+
+`docs/index.md` must link to a strict majority of the navigable canonical docs
+(`PROJECT_BRIEF`, `ARCHITECTURE`, `GLOSSARY`, `DECISIONS`, `ROADMAP`, `BACKLOG`,
+`nfr/NON_FUNCTIONAL`, `features/INDEX`, `reports/README`). Detection is by resolved link
+target (language-agnostic). Otherwise report `WARN` (`INDEX_MAP_MISSING`). Absent
+`index.md` is covered by R001, not here.
+
+### R014 AI instruction map pointer (INFO)
+
+An existing AI-instruction file that does not link to `docs/index.md` is reported as `INFO`
+(`AI_INSTRUCTION_MAP_POINTER_MISSING`). Never a `BLOCKER`.
+
+### R015 Optional operational snapshot
+
+`docs/reports/CURRENT_STATE.md` is optional. Its absence is never a finding; the skill
+never creates it.
+
 ## Classification Rules
 
 Use strict immediate alignment defaults:
@@ -92,6 +111,8 @@ Use strict immediate alignment defaults:
 - Feature README section missing from the majority => `WARN`
 - Broken traceability => `BLOCKER`
 - Broken links or nav references => `BLOCKER`
+- Missing documentation map in `index.md` => `WARN`
+- Missing `docs/index.md` pointer in an AI-instruction file => `INFO`
 
 No phased convergence by default.
 
