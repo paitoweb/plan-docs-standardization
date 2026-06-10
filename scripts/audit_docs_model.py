@@ -736,8 +736,20 @@ def references_doc_index(path: Path, repo: Path) -> bool:
     return False
 
 
+def ai_instruction_targets(repo: Path) -> list[str]:
+    """Flat AI-instruction files plus each active profile's soft target (deduped)."""
+
+    targets = list(AI_INSTRUCTION_FILES)
+    active, _source = _ap.resolve_active_profiles(repo)
+    for key in active:
+        soft_target = _ap.PROFILES[key].soft_target
+        if soft_target not in targets:
+            targets.append(soft_target)
+    return targets
+
+
 def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
-    for rel in AI_INSTRUCTION_FILES:
+    for rel in ai_instruction_targets(repo):
         path = repo / rel
         if not path.exists():
             make_finding(
