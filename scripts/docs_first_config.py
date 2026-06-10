@@ -39,3 +39,40 @@ def render_config(cfg: DocsFirstConfig) -> str:
     if cfg.updated is not None:
         lines.append(f"updated: {cfg.updated}")
     return "\n".join(lines) + "\n"
+
+
+def _parse_value(raw: str) -> object:
+    raw = raw.strip()
+    if raw.startswith("[") and raw.endswith("]"):
+        inner = raw[1:-1].strip()
+        if not inner:
+            return []
+        return [item.strip().strip("\"'") for item in inner.split(",")]
+    if raw.isdigit():
+        return int(raw)
+    return raw.strip("\"'")
+
+
+def parse_config(text: str) -> DocsFirstConfig:
+    data: dict[str, object] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+        key, _, value = stripped.partition(":")
+        data[key.strip()] = _parse_value(value)
+
+    return DocsFirstConfig(
+        profiles=list(data.get("profiles", []) or []),
+        enforcement_chosen=list(data.get("enforcement_chosen", []) or []),
+        enforcement_declined=list(data.get("enforcement_declined", []) or []),
+        updated=(data.get("updated") or None),
+        version=int(data.get("version", SCHEMA_VERSION)),
+    )
+
+
+def load_config(repo: Path) -> DocsFirstConfig | None:
+    path = Path(repo) / CONFIG_REL
+    if not path.exists():
+        return None
+    return parse_config(path.read_text(encoding="utf-8"))
