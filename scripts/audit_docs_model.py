@@ -36,6 +36,18 @@ REQUIRED_FILES = [
 
 FEATURE_REQUIRED_FILES = ["README.md", "flows.md", "rules.md", "notes.md"]
 
+INDEX_MAP_NAVIGABLE = [
+    "docs/PROJECT_BRIEF.md",
+    "docs/ARCHITECTURE.md",
+    "docs/GLOSSARY.md",
+    "docs/DECISIONS.md",
+    "docs/ROADMAP.md",
+    "docs/BACKLOG.md",
+    "docs/nfr/NON_FUNCTIONAL.md",
+    "docs/features/INDEX.md",
+    "docs/reports/README.md",
+]
+
 AI_INSTRUCTION_FILES = [
     "CLAUDE.md",
     "AGENTS.md",
@@ -548,6 +560,38 @@ def check_markdown_links(repo: Path, findings: list[Finding]) -> None:
                     f"Broken internal link target: {target}",
                     line=line_number,
                 )
+
+
+def check_index_map(repo: Path, findings: list[Finding]) -> None:
+    """WARN when docs/index.md is not a navigational map.
+
+    A map links to a strict majority of the navigable canonical docs. Detection is
+    by resolved link target, independent of language. Absent index.md is handled by
+    the required-files check, not here.
+    """
+
+    index_path = repo / "docs" / "index.md"
+    if not index_path.exists():
+        return
+
+    navigable = {(repo / rel).resolve() for rel in INDEX_MAP_NAVIGABLE}
+    linked: set[Path] = set()
+    for _line_number, target in iter_markdown_links(index_path):
+        resolved = resolve_link_target(repo, index_path, target)
+        if resolved is not None:
+            linked.add(resolved.resolve())
+
+    hits = len(navigable & linked)
+    if hits * 2 <= len(INDEX_MAP_NAVIGABLE):  # not a strict majority
+        make_finding(
+            findings,
+            "WARN",
+            "INDEX_MAP_MISSING",
+            "docs/index.md",
+            "docs/index.md lacks a documentation map: it links to "
+            f"{hits} of {len(INDEX_MAP_NAVIGABLE)} canonical docs. A navigational map "
+            "should link to a majority of them.",
+        )
 
 
 def extract_nav_refs(nav_entry: Any) -> list[str]:
