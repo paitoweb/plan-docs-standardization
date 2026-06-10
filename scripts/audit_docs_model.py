@@ -18,6 +18,11 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     yaml = None
 
+import agent_profiles as _ap
+import docs_first_config as _dfc
+
+KNOWN_ENFORCEMENT_GATES = {"ci", "local-hook", "claude-hooks", "codex-hooks"}
+
 
 REQUIRED_FILES = [
     "docs/index.md",
@@ -778,6 +783,35 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
             )
 
 
+def check_agent_profiles_config(repo: Path, findings: list[Finding]) -> None:
+    """Validate .docs-first/config.yml when present. Absent file is not a finding
+    (detection/asking is skill behavior, not the audit's job)."""
+
+    config = _dfc.load_config(repo)
+    if config is None:
+        return
+
+    unknown_profiles = [p for p in config.profiles if p not in _ap.PROFILES]
+    unknown_gates = [
+        g
+        for g in (config.enforcement_chosen + config.enforcement_declined)
+        if g not in KNOWN_ENFORCEMENT_GATES
+    ]
+    if unknown_profiles or unknown_gates:
+        details = []
+        if unknown_profiles:
+            details.append(f"unknown profiles {sorted(set(unknown_profiles))}")
+        if unknown_gates:
+            details.append(f"unknown enforcement gates {sorted(set(unknown_gates))}")
+        make_finding(
+            findings,
+            "WARN",
+            "DOCS_FIRST_CONFIG_INVALID",
+            _dfc.CONFIG_REL,
+            f".docs-first/config.yml has {'; '.join(details)}.",
+        )
+
+
 def summarize(findings: list[Finding]) -> AuditSummary:
     summary = AuditSummary()
     for finding in findings:
@@ -825,6 +859,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_mkdocs_nav(repo, findings)
     check_index_map(repo, findings)
     check_ai_instruction_files(repo, findings)
+    check_agent_profiles_config(repo, findings)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)
