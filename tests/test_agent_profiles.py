@@ -61,3 +61,33 @@ def test_detect_ignores_generic_which_has_no_signal(tmp_path):
     # generic has empty detect_dirs and must never be auto-detected
     (tmp_path / "AGENTS.md").write_text("# x\n", encoding="utf-8")
     assert ap.detect_signal_profiles(tmp_path) == []
+
+
+import docs_first_config as dfc
+
+
+def _write_cfg(repo, profiles):
+    target = repo / dfc.CONFIG_REL
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(dfc.render_config(dfc.DocsFirstConfig(profiles=profiles)), encoding="utf-8")
+
+
+def test_resolve_prefers_config(tmp_path):
+    _write_cfg(tmp_path, ["codex"])
+    (tmp_path / ".cursor").mkdir()  # signal disagrees; config wins
+    profiles, source = ap.resolve_active_profiles(tmp_path)
+    assert profiles == ["codex"]
+    assert source == "config"
+
+
+def test_resolve_falls_back_to_signals(tmp_path):
+    (tmp_path / ".cursor").mkdir()
+    profiles, source = ap.resolve_active_profiles(tmp_path)
+    assert profiles == ["cursor"]
+    assert source == "signals"
+
+
+def test_resolve_undetermined_when_nothing(tmp_path):
+    profiles, source = ap.resolve_active_profiles(tmp_path)
+    assert profiles == []
+    assert source == "undetermined"

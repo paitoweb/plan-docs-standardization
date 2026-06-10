@@ -6,6 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import docs_first_config as dfc
+
 
 @dataclass(frozen=True)
 class AgentProfile:
@@ -73,3 +75,23 @@ def detect_signal_profiles(repo: Path) -> list[str]:
         and any((repo / marker).is_dir() for marker in profile.detect_dirs)
     ]
     return sorted(detected)
+
+
+def resolve_active_profiles(repo: Path) -> tuple[list[str], str]:
+    """Return (profile_keys, source) following the detection hierarchy:
+
+    1. persisted config   -> source "config"
+    2. filesystem signals -> source "signals"
+    3. neither            -> ([], "undetermined")  (the skill then asks the user)
+    """
+
+    repo = Path(repo)
+    config = dfc.load_config(repo)
+    if config is not None and config.profiles:
+        return list(config.profiles), "config"
+
+    detected = detect_signal_profiles(repo)
+    if detected:
+        return detected, "signals"
+
+    return [], "undetermined"
