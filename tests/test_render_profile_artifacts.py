@@ -58,3 +58,14 @@ def test_cli_rejects_unknown_profile():
         [sys.executable, str(script), "windsurf"], capture_output=True, text=True
     )
     assert result.returncode != 0
+
+
+def test_committed_cursor_rule_matches_generator():
+    repo_root = Path(__file__).resolve().parent.parent
+    committed = repo_root / "assets" / "templates" / "cursor" / "rules" / "docs-first.mdc"
+    assert committed.exists(), "Cursor rule template is missing; regenerate it."
+    assert committed.read_text(encoding="utf-8") == rpa.render_for_profile("cursor"), (
+        "Cursor rule drifted from canonical. Regenerate:\n"
+        "  python3 scripts/render_profile_artifacts.py cursor "
+        "> assets/templates/cursor/rules/docs-first.mdc"
+    )
