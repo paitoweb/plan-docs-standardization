@@ -1,5 +1,8 @@
 # Roadmap
 
+> Scope: strategy and delivery phases. Do not put operational session-state
+> (branch / PR / deploy version) here — see the Documentation Map in `index.md`.
+
 ## Phase 0 - Documentation foundation
 - [Item 1]
 - [Item 2]

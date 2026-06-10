@@ -1,7 +1,10 @@
 # Report Index
 
 ## Purpose
-Consolidate requirement verification reports, technical analyses, and investigations.
+This folder hosts two genres: (1) point-in-time reports — requirement verification,
+technical analyses, and investigations; and (2) an optional living snapshot,
+`CURRENT_STATE.md`, that records where the project is right now (rewritten each session,
+never append-only).
 
 ## Reports
 

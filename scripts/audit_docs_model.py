@@ -62,6 +62,8 @@ AI_INSTRUCTION_SECTION_HEADINGS = [
 
 CANONICAL_GUIDELINES_REL = "assets/templates/ai-instructions/guidelines.en.md"
 
+AI_INSTRUCTION_MAP_HEADING = "## Documentation Map"
+
 IGNORED_FILE_NAMES = {".DS_Store"}
 IGNORED_PATH_PARTS = {".obsidian", "__pycache__"}
 
@@ -147,6 +149,11 @@ def load_canonical_sections() -> dict[str, str]:
             raise ValueError(f"Canonical template missing section: {heading}")
         sections[heading] = section
     return sections
+
+
+def load_canonical_map_section() -> str:
+    text = (skill_root() / CANONICAL_GUIDELINES_REL).read_text(encoding="utf-8")
+    return extract_section(text, AI_INSTRUCTION_MAP_HEADING) or ""
 
 
 def normalize_section_title(raw_title: str) -> str:
