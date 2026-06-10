@@ -141,3 +141,30 @@ Additionally, the skill must never create AI instruction files. For absent
 INFO finding instructing manual creation.
 
 Output only diagnostics and planning artifacts.
+
+## Agent Profiles & State
+
+The method is agent-agnostic; delivery is per-profile (claude/cursor/codex/generic). Each
+profile declares an always-on soft target (`CLAUDE.md` / `.cursor/rules/docs-first.mdc` /
+`AGENTS.md`). Active profiles come from `.docs-first/config.yml` (`profiles:`) or, absent it,
+filesystem markers. Active profiles' soft targets are audited structurally like the base
+AI-instruction files.
+
+`.docs-first/config.yml` records decisions (active profiles, chosen/declined enforcement gates),
+not observations. It is written only on explicit user consent; a read-only audit never writes it.
+
+### Config validity (WARN)
+
+When `.docs-first/config.yml` is present, unknown profile keys or unknown enforcement-gate keys
+are reported as `DOCS_FIRST_CONFIG_INVALID` (`WARN`). Absent file is never a finding.
+
+### Enforcement reconciliation
+
+The audit compares `.docs-first/config.yml` `enforcement_chosen` against installed gate artifacts
+(`.github/workflows/docs-audit.yml`, `.githooks/pre-commit`, `.claude/settings.json` with a `hooks`
+key, `.codex/hooks.json`):
+
+- A chosen gate with no artifact on disk => `ENFORCEMENT_GATE_MISSING` (`WARN`).
+- No gate chosen and none present, in a docs repo (alignment mode) => `NO_ENFORCEMENT_GATE` (`INFO`).
+
+Enforcement is never a `BLOCKER`: the skill never forces a gate.

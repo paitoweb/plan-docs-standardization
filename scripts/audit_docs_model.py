@@ -18,6 +18,12 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     yaml = None
 
+import agent_profiles as _ap
+import docs_first_config as _dfc
+import enforcement_gates as _eg
+
+KNOWN_ENFORCEMENT_GATES = {"ci", "local-hook", "claude-hooks", "codex-hooks"}
+
 
 REQUIRED_FILES = [
     "docs/index.md",
@@ -731,8 +737,20 @@ def references_doc_index(path: Path, repo: Path) -> bool:
     return False
 
 
+def ai_instruction_targets(repo: Path) -> list[str]:
+    """Flat AI-instruction files plus each active profile's soft target (deduped)."""
+
+    targets = list(AI_INSTRUCTION_FILES)
+    active, _source = _ap.resolve_active_profiles(repo)
+    for key in active:
+        soft_target = _ap.PROFILES[key].soft_target
+        if soft_target not in targets:
+            targets.append(soft_target)
+    return targets
+
+
 def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
-    for rel in AI_INSTRUCTION_FILES:
+    for rel in ai_instruction_targets(repo):
         path = repo / rel
         if not path.exists():
             make_finding(
@@ -776,6 +794,67 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
                 "AI instruction file does not reference docs/index.md (the documentation "
                 "map). Add a pointer so agents consult the map before writing docs.",
             )
+
+
+def check_agent_profiles_config(repo: Path, findings: list[Finding]) -> None:
+    """Validate .docs-first/config.yml when present. Absent file is not a finding
+    (detection/asking is skill behavior, not the audit's job)."""
+
+    config = _dfc.load_config(repo)
+    if config is None:
+        return
+
+    unknown_profiles = [p for p in config.profiles if p not in _ap.PROFILES]
+    unknown_gates = [
+        g
+        for g in (config.enforcement_chosen + config.enforcement_declined)
+        if g not in KNOWN_ENFORCEMENT_GATES
+    ]
+    if unknown_profiles or unknown_gates:
+        details = []
+        if unknown_profiles:
+            details.append(f"unknown profiles {sorted(set(unknown_profiles))}")
+        if unknown_gates:
+            details.append(f"unknown enforcement gates {sorted(set(unknown_gates))}")
+        make_finding(
+            findings,
+            "WARN",
+            "DOCS_FIRST_CONFIG_INVALID",
+            _dfc.CONFIG_REL,
+            f".docs-first/config.yml has {'; '.join(details)}.",
+        )
+
+
+def check_enforcement_gates(repo: Path, findings: list[Finding]) -> None:
+    """Reconcile chosen enforcement gates (.docs-first/config.yml) with what is on disk.
+
+    Chosen-but-missing -> WARN. Nothing chosen and nothing present (docs repo only)
+    -> INFO. Never a BLOCKER — the skill never forces a gate.
+    """
+
+    config = _dfc.load_config(repo)
+    chosen = set(config.enforcement_chosen) if config else set()
+    present = {g for g in KNOWN_ENFORCEMENT_GATES if _eg.gate_present(repo, g)}
+
+    for gate in sorted(chosen - present):
+        make_finding(
+            findings,
+            "WARN",
+            "ENFORCEMENT_GATE_MISSING",
+            _eg.GATE_PATHS.get(gate, gate),
+            f"Enforcement gate '{gate}' is chosen in .docs-first/config.yml but not "
+            "installed. Re-install it or remove it from the config.",
+        )
+
+    if not chosen and not present and discover_mode(repo) == "alignment":
+        make_finding(
+            findings,
+            "INFO",
+            "NO_ENFORCEMENT_GATE",
+            ".docs-first/config.yml",
+            "No enforcement gate active. The Docs-First model is advisory only; "
+            "code can drift from docs. Consider a CI/branch-protection or pre-commit gate.",
+        )
 
 
 def summarize(findings: list[Finding]) -> AuditSummary:
@@ -825,6 +904,8 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_mkdocs_nav(repo, findings)
     check_index_map(repo, findings)
     check_ai_instruction_files(repo, findings)
+    check_agent_profiles_config(repo, findings)
+    check_enforcement_gates(repo, findings)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)
