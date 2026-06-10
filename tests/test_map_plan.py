@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import audit_docs_model as adm
 import build_docs_alignment_plan as plan
 
 
@@ -29,10 +30,16 @@ def test_index_map_diff_appends_map_block(tmp_path):
 
 def test_pointer_missing_diff_appends_map_section(tmp_path):
     # CLAUDE.md has workflow + principles but no docs/index.md pointer.
-    import audit_docs_model as adm
     sections = adm.load_canonical_sections()
     text = "\n\n".join(sections[h] for h in adm.AI_INSTRUCTION_SECTION_HEADINGS) + "\n"
     (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
     diff = plan.ai_instruction_update_diff(tmp_path, "CLAUDE.md")
     assert "## Documentation Map" in diff
     assert "docs/index.md" in diff
+
+
+def test_index_map_diff_appends_map_block_no_existing_file(tmp_path):
+    result = {"findings": [{"code": "INDEX_MAP_MISSING", "path": "docs/index.md",
+                            "severity": "WARN", "message": "no map"}]}
+    items, _ = plan.proposed_diffs(tmp_path, result, [], ["docs/index.md"], 10)
+    assert "## Documentation Map" in items[0]["diff"]

@@ -161,9 +161,11 @@ def feature_section_append_diff(repo: Path, target_rel: str, missing_titles: lis
 def index_map_append_diff(repo: Path, target_rel: str) -> str:
     template = templates_root() / "docs" / "index.md"
     section = adm.extract_section(template.read_text(encoding="utf-8"), "## Documentation Map")
+    if not section:
+        return "# ERROR: canonical template missing '## Documentation Map' section."
     file_path = repo / target_rel
     text = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
-    return _append_block_diff(target_rel, text.splitlines(), section or "")
+    return _append_block_diff(target_rel, text.splitlines(), section)
 
 
 def ai_instruction_update_diff(repo: Path, target_rel: str) -> str:
