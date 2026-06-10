@@ -38,7 +38,7 @@ def test_ai_instruction_update_diff_appends_missing_section(tmp_path):
 
 def test_ai_instruction_update_diff_identical_file_reports_no_changes(tmp_path):
     sections = adm.load_canonical_sections()
-    text = "# Project\n\n" + "\n\n".join(
+    text = "# Project\n\nSee [docs/index.md](docs/index.md).\n\n" + "\n\n".join(
         sections[h] for h in adm.AI_INSTRUCTION_SECTION_HEADINGS
     ) + "\n"
     (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")

@@ -159,6 +159,12 @@ def test_ai_update_diff_appends_missing_principles(tmp_path):
 
 def test_ai_update_diff_identical_reports_no_changes(tmp_path):
     sections = adm.load_canonical_sections()
-    text = sections["## Workflow: New Feature"] + "\n\n" + sections["## Working Principles"] + "\n"
+    text = (
+        "See [docs/index.md](docs/index.md).\n\n"
+        + sections["## Workflow: New Feature"]
+        + "\n\n"
+        + sections["## Working Principles"]
+        + "\n"
+    )
     (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
     assert plan.ai_instruction_update_diff(tmp_path, "CLAUDE.md") == "No changes required."

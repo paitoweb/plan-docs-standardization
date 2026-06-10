@@ -158,6 +158,14 @@ def feature_section_append_diff(repo: Path, target_rel: str, missing_titles: lis
     return "\n".join(body)
 
 
+def index_map_append_diff(repo: Path, target_rel: str) -> str:
+    template = templates_root() / "docs" / "index.md"
+    section = adm.extract_section(template.read_text(encoding="utf-8"), "## Documentation Map")
+    file_path = repo / target_rel
+    text = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
+    return _append_block_diff(target_rel, text.splitlines(), section or "")
+
+
 def ai_instruction_update_diff(repo: Path, target_rel: str) -> str:
     # Proposes the English canonical block as a labeled starting point for any
     # structurally-missing section. Human-facing; not intended for `git apply`.
@@ -176,6 +184,10 @@ def ai_instruction_update_diff(repo: Path, target_rel: str) -> str:
         blocks.append(_append_block_diff(target_rel, file_lines, canonical["## Workflow: New Feature"], label))
     if not has_principles:
         blocks.append(_append_block_diff(target_rel, file_lines, canonical["## Working Principles"], label))
+    if not adm.references_doc_index(file_path, repo):
+        map_section = adm.load_canonical_map_section()
+        if map_section:
+            blocks.append(_append_block_diff(target_rel, file_lines, map_section, label))
 
     return "\n\n".join(blocks) if blocks else "No changes required."
 
@@ -279,6 +291,18 @@ def proposed_diffs(
     for target_rel in alter_files:
         if len(items) >= max_diffs:
             break
+        if any(
+            f["path"] == target_rel and f["code"] == "INDEX_MAP_MISSING"
+            for f in result["findings"]
+        ):
+            items.append(
+                {
+                    "path": target_rel,
+                    "type": "update",
+                    "diff": index_map_append_diff(repo, target_rel),
+                }
+            )
+            continue
         if target_rel in AI_INSTRUCTION_FILES:
             items.append(
                 {
