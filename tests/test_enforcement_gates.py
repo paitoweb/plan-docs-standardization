@@ -39,3 +39,39 @@ def test_codex_hooks_is_valid_json_with_pretooluse_deny():
     matcher_group = data["hooks"]["PreToolUse"][0]
     assert "matcher" in matcher_group
     assert "python3 audit.py ." in text
+
+
+def test_gate_present_ci(tmp_path):
+    assert eg.gate_present(tmp_path, "ci") is False
+    wf = tmp_path / ".github" / "workflows" / "docs-audit.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text("name: x\n", encoding="utf-8")
+    assert eg.gate_present(tmp_path, "ci") is True
+
+
+def test_gate_present_local_hook(tmp_path):
+    hook = tmp_path / ".githooks" / "pre-commit"
+    hook.parent.mkdir(parents=True)
+    hook.write_text("#!/bin/sh\n", encoding="utf-8")
+    assert eg.gate_present(tmp_path, "local-hook") is True
+
+
+def test_gate_present_claude_requires_hooks_marker(tmp_path):
+    settings = tmp_path / ".claude" / "settings.json"
+    settings.parent.mkdir(parents=True)
+    settings.write_text('{"model": "x"}', encoding="utf-8")
+    assert eg.gate_present(tmp_path, "claude-hooks") is False  # no "hooks" key
+    settings.write_text('{"hooks": {}}', encoding="utf-8")
+    assert eg.gate_present(tmp_path, "claude-hooks") is True
+
+
+def test_gate_present_codex(tmp_path):
+    assert eg.gate_present(tmp_path, "codex-hooks") is False
+    hooks = tmp_path / ".codex" / "hooks.json"
+    hooks.parent.mkdir(parents=True)
+    hooks.write_text("{}", encoding="utf-8")
+    assert eg.gate_present(tmp_path, "codex-hooks") is True
+
+
+def test_gate_present_unknown_is_false(tmp_path):
+    assert eg.gate_present(tmp_path, "telepathy") is False

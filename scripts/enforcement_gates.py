@@ -74,3 +74,24 @@ def render_codex_hooks(audit_cmd: str = DEFAULT_AUDIT_CMD) -> str:
         }
     }
     return json.dumps(data, indent=2) + "\n"
+
+
+GATE_PATHS = {
+    "ci": ".github/workflows/docs-audit.yml",
+    "local-hook": ".githooks/pre-commit",
+    "claude-hooks": ".claude/settings.json",
+    "codex-hooks": ".codex/hooks.json",
+}
+
+
+def gate_present(repo: Path, gate: str) -> bool:
+    rel = GATE_PATHS.get(gate)
+    if rel is None:
+        return False
+    path = Path(repo) / rel
+    if not path.exists():
+        return False
+    if gate == "claude-hooks":
+        # settings.json exists for many reasons; require a hooks marker.
+        return '"hooks"' in path.read_text(encoding="utf-8")
+    return True
