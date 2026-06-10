@@ -76,3 +76,12 @@ def load_config(repo: Path) -> DocsFirstConfig | None:
     if not path.exists():
         return None
     return parse_config(path.read_text(encoding="utf-8"))
+
+
+def save_config(repo: Path, cfg: DocsFirstConfig) -> Path:
+    """Write .docs-first/config.yml. Mutating — callers must have user consent."""
+
+    path = Path(repo) / CONFIG_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_config(cfg), encoding="utf-8")
+    return path

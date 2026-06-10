@@ -62,3 +62,32 @@ def test_load_config_reads_file(tmp_path):
     parsed = dfc.load_config(tmp_path)
     assert parsed is not None
     assert parsed.profiles == ["codex"]
+
+
+def test_save_config_creates_dir_and_file(tmp_path):
+    cfg = dfc.DocsFirstConfig(profiles=["cursor"], enforcement_chosen=["ci"], updated="2026-06-10")
+    path = dfc.save_config(tmp_path, cfg)
+    assert path == tmp_path / dfc.CONFIG_REL
+    assert path.exists()
+    assert (tmp_path / ".docs-first").is_dir()
+
+
+def test_save_config_round_trips_through_load(tmp_path):
+    cfg = dfc.DocsFirstConfig(
+        profiles=["claude", "codex"],
+        enforcement_chosen=["local-hook"],
+        enforcement_declined=["ci"],
+        updated="2026-06-10",
+    )
+    dfc.save_config(tmp_path, cfg)
+    loaded = dfc.load_config(tmp_path)
+    assert loaded.profiles == ["claude", "codex"]
+    assert loaded.enforcement_chosen == ["local-hook"]
+    assert loaded.enforcement_declined == ["ci"]
+
+
+def test_save_config_overwrites_existing(tmp_path):
+    dfc.save_config(tmp_path, dfc.DocsFirstConfig(profiles=["claude"]))
+    dfc.save_config(tmp_path, dfc.DocsFirstConfig(profiles=["cursor"]))
+    loaded = dfc.load_config(tmp_path)
+    assert loaded.profiles == ["cursor"]
