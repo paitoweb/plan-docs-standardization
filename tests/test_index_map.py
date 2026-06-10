@@ -52,3 +52,34 @@ def test_index_map_no_finding_when_index_absent(tmp_path):
     findings = []
     adm.check_index_map(tmp_path, findings)
     assert findings == []
+
+
+def test_ai_file_without_pointer_gets_info(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text("# Project\n\nNo pointer here.\n", encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    info = {f.code for f in findings if f.severity == "INFO" and f.path == "CLAUDE.md"}
+    assert "AI_INSTRUCTION_MAP_POINTER_MISSING" in info
+
+
+def test_ai_file_with_pointer_has_no_pointer_finding(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text(
+        "# Project\n\nSee [the map](docs/index.md).\n", encoding="utf-8"
+    )
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    codes = {f.code for f in findings if f.path == "CLAUDE.md"}
+    assert "AI_INSTRUCTION_MAP_POINTER_MISSING" not in codes
+
+
+def test_pointer_missing_is_never_blocker(tmp_path):
+    # workflow + principles present (no BLOCKER), but no docs/index.md pointer
+    sections = adm.load_canonical_sections()
+    text = "\n\n".join(sections[h] for h in adm.AI_INSTRUCTION_SECTION_HEADINGS)
+    (tmp_path / "CLAUDE.md").write_text(text + "\n", encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    blockers = {f.code for f in findings if f.severity == "BLOCKER" and f.path == "CLAUDE.md"}
+    assert blockers == set()
+    info = {f.code for f in findings if f.severity == "INFO" and f.path == "CLAUDE.md"}
+    assert info == {"AI_INSTRUCTION_MAP_POINTER_MISSING"}

@@ -713,6 +713,17 @@ def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
     return workflow_index is not None, principles_index is not None
 
 
+def references_doc_index(path: Path, repo: Path) -> bool:
+    """True when the markdown file links to docs/index.md (by resolved target)."""
+
+    index_resolved = (repo / "docs" / "index.md").resolve()
+    for _line_number, target in iter_markdown_links(path):
+        resolved = resolve_link_target(repo, path, target)
+        if resolved is not None and resolved.resolve() == index_resolved:
+            return True
+    return False
+
+
 def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
     for rel in AI_INSTRUCTION_FILES:
         path = repo / rel
@@ -747,6 +758,16 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
                 rel,
                 "AI instruction file missing a principles section "
                 "(a heading followed by a bulleted list).",
+            )
+
+        if not references_doc_index(path, repo):
+            make_finding(
+                findings,
+                "INFO",
+                "AI_INSTRUCTION_MAP_POINTER_MISSING",
+                rel,
+                "AI instruction file does not reference docs/index.md (the documentation "
+                "map). Add a pointer so agents consult the map before writing docs.",
             )
 
 
