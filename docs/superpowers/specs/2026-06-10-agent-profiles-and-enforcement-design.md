@@ -154,11 +154,11 @@ The audit runs over the **repo state at commit/PR time**: each change must leave
 - For targets with **no skill runtime** (ChatGPT web), the skill only *generates* the static structure (`AGENTS.md` + `docs/`) — there is no in-session skill.
 - No single skills directory serves all three runtimes (Cursor reads `.claude/skills/`; Codex reads only `.agents/skills/`), so each host gets a native install — confirming the per-target approach over a shared package.
 
-## 9. Single-Source & Anti-Drift
+## 9. Single-Source & Anti-Drift (decided: generator by script)
 
-- All overlay artifacts (the Cursor `.mdc`, each soft-instruction variant, the skill package copies) are **generated** from `guidelines.en.md` / `SKILL.md` / templates.
-- A **generator** (e.g. `scripts/render_profile_artifacts.py`) emits them; committed copies are the generated output.
-- **Tests** assert each committed artifact equals `generate(canonical)` → editing a canonical source without regenerating fails CI. This is the structural fix for the PR #4 drift class.
+- All overlay artifacts (the Cursor `.mdc`, each soft-instruction variant, the skill package copies) are **generated** from `guidelines.en.md` / `SKILL.md` / templates — **never hand-maintained**. This is the chosen approach (DRY): canonical sources are the only place content is edited.
+- A **generator script** — `scripts/render_profile_artifacts.py` — composes `profile_overlay ⊕ canonical` and emits each artifact. It is the single command a maintainer runs after editing canonical sources, and the same composition the plan/install path uses to propose per-agent files.
+- Committed per-agent artifacts are the generator's output. **Tests** assert each committed artifact equals `render_profile_artifacts` output → editing a canonical source (or a profile manifest) without regenerating fails CI. This is the structural fix for the PR #4 drift class.
 
 ## 10. Testing Strategy
 
@@ -181,4 +181,3 @@ The audit runs over the **repo state at commit/PR time**: each change must leave
 - **Branch protection** cannot be delivered as a committed file; "do it for you" requires `gh api` + admin rights — must degrade gracefully when unavailable (generate workflow, instruct manual toggle).
 - **AGENTS.md 32 KiB budget** shared across the whole chain → the Codex soft variant must stay lean; detailed procedure belongs in the skill, not the always-on file.
 - **Cursor native hard gate**: none documented; if Cursor later ships hooks, add to its profile. Until then, Cursor enforcement = git/CI only (document this clearly).
-- **Generator vs hand-maintained templates**: confirm the generator approach is acceptable vs. simply storing wrapped copies guarded by a test (lighter, but less DRY).
