@@ -157,3 +157,14 @@ not observations. It is written only on explicit user consent; a read-only audit
 
 When `.docs-first/config.yml` is present, unknown profile keys or unknown enforcement-gate keys
 are reported as `DOCS_FIRST_CONFIG_INVALID` (`WARN`). Absent file is never a finding.
+
+### Enforcement reconciliation
+
+The audit compares `.docs-first/config.yml` `enforcement_chosen` against installed gate artifacts
+(`.github/workflows/docs-audit.yml`, `.githooks/pre-commit`, `.claude/settings.json` with a `hooks`
+key, `.codex/hooks.json`):
+
+- A chosen gate with no artifact on disk => `ENFORCEMENT_GATE_MISSING` (`WARN`).
+- No gate chosen and none present, in a docs repo (alignment mode) => `NO_ENFORCEMENT_GATE` (`INFO`).
+
+Enforcement is never a `BLOCKER`: the skill never forces a gate.

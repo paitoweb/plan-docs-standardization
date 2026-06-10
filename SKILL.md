@@ -167,6 +167,38 @@ For Claude/Codex, append the canonical block to the user's existing `CLAUDE.md`/
 `DOCS_FIRST_CONFIG_INVALID` (`WARN`) for unknown profile or enforcement-gate keys. Absent file
 is never a finding.
 
+## Enforcement Gates
+
+Instructions are *soft* (they shape the agent but it can drift). True enforcement is a
+*deterministic gate* that runs the audit outside the model. Gates are **never forced**.
+
+Gate options (all run the docs audit; `audit_cmd` points at the installed audit script):
+
+| Gate key | Artifact | Strength | Scope |
+|---|---|---|---|
+| `ci` | `.github/workflows/docs-audit.yml` + branch protection | unbypassable (real gate) | team-wide |
+| `local-hook` | `.githooks/pre-commit` (+ `git config core.hooksPath .githooks`) | bypassable (`--no-verify`) | per dev |
+| `claude-hooks` | `.claude/settings.json` Stop hook | in-session (Claude only) | per dev |
+| `codex-hooks` | `.codex/hooks.json` PreToolUse deny | in-session (Codex only) | per repo |
+
+**Consent flow (never force):**
+
+1. **Never obligate** a gate.
+2. **Warn, concretely:** no gate → docs drift silently and eventually lie; soft-only → fails
+   under pressure (big PR, deadline); local-hook only → bypassable, and teammates without it commit
+   non-compliant code.
+3. **Ask which to adopt, leading with a recommendation:** CI + branch protection, plus the local
+   hook; add native hooks where the agent offers them.
+4. **Instruct + offer to install, with a preview** of every file write / config change / `gh api`
+   call before acting. Generate artifacts with `enforcement_gates.render_*`. Branch protection is a
+   repo setting, not a file: `gh api -X PUT repos/{owner}/{repo}/branches/main/protection ...`
+   (needs admin); degrade gracefully (generate the workflow, instruct the manual toggle) when the
+   token lacks rights.
+
+**Persisted choices:** record accepted gates in `.docs-first/config.yml` `enforcement_chosen` and
+refusals in `enforcement_declined` (never re-ask). The audit then reconciles intent vs reality
+(see below). Native hook configs follow documented schemas — verify against the installed tool.
+
 ## Escalation Policy
 
 - Keep execution non-mutating by default.
