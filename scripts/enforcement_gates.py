@@ -45,3 +45,32 @@ def render_precommit_hook(audit_cmd: str = DEFAULT_AUDIT_CMD) -> str:
         "  exit 1\n"
         "fi\n"
     )
+
+
+def render_claude_hooks(audit_cmd: str = DEFAULT_AUDIT_CMD) -> str:
+    """Claude Code settings.json hooks block: run the audit at Stop; exit 2 blocks."""
+
+    data = {
+        "hooks": {
+            "Stop": [
+                {"hooks": [{"type": "command", "command": audit_cmd}]}
+            ]
+        }
+    }
+    return json.dumps(data, indent=2) + "\n"
+
+
+def render_codex_hooks(audit_cmd: str = DEFAULT_AUDIT_CMD) -> str:
+    """Codex .codex/hooks.json: PreToolUse on patch/commit; exit 2 (deny) blocks."""
+
+    data = {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "^apply_patch$",
+                    "hooks": [{"type": "command", "command": audit_cmd}],
+                }
+            ]
+        }
+    }
+    return json.dumps(data, indent=2) + "\n"

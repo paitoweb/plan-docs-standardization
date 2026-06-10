@@ -21,3 +21,21 @@ def test_precommit_hook_blocks_on_nonzero_and_is_sh():
     assert "python3 audit.py ." in hook
     assert "exit 1" in hook  # blocks the commit on failure
     assert "--no-verify" in hook  # tells the user how to bypass deliberately
+
+
+def test_claude_hooks_is_valid_json_with_stop_event():
+    text = eg.render_claude_hooks("python3 audit.py .")
+    data = json.loads(text)
+    assert "hooks" in data
+    assert "Stop" in data["hooks"]
+    # the audit command is wired into a command hook
+    assert "python3 audit.py ." in text
+
+
+def test_codex_hooks_is_valid_json_with_pretooluse_deny():
+    text = eg.render_codex_hooks("python3 audit.py .")
+    data = json.loads(text)
+    assert "PreToolUse" in data["hooks"]
+    matcher_group = data["hooks"]["PreToolUse"][0]
+    assert "matcher" in matcher_group
+    assert "python3 audit.py ." in text
