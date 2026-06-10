@@ -1,18 +1,7 @@
 from pathlib import Path
 
 import audit_docs_model as adm
-
-NAV = [
-    "docs/PROJECT_BRIEF.md",
-    "docs/ARCHITECTURE.md",
-    "docs/GLOSSARY.md",
-    "docs/DECISIONS.md",
-    "docs/ROADMAP.md",
-    "docs/BACKLOG.md",
-    "docs/nfr/NON_FUNCTIONAL.md",
-    "docs/features/INDEX.md",
-    "docs/reports/README.md",
-]
+from audit_docs_model import INDEX_MAP_NAVIGABLE as NAV
 
 
 def _write_index(repo: Path, body: str) -> None:
@@ -48,6 +37,15 @@ def test_index_map_warns_below_strict_majority(tmp_path):
     findings = []
     adm.check_index_map(tmp_path, findings)
     assert _codes(findings) == {"INDEX_MAP_MISSING"}
+
+
+def test_index_map_passes_at_minimum_strict_majority(tmp_path):
+    # 5 of 9 is the minimum strict majority -> no WARN
+    links = "\n".join(f"- [doc]({rel[len('docs/'):]})" for rel in NAV[:5])
+    _write_index(tmp_path, "# Docs\n\n" + links + "\n")
+    findings = []
+    adm.check_index_map(tmp_path, findings)
+    assert findings == []
 
 
 def test_index_map_no_finding_when_index_absent(tmp_path):
