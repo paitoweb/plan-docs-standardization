@@ -22,3 +22,13 @@ They complement the project's "non-negotiable invariants" and "NOT list". They a
 - **Official docs for APIs**: for libraries and SDKs, rely only on official documentation — never assume signatures, methods, or behaviors.
 - **Pragmatism**: be practical and direct. Do not invent out-of-scope features. Do not ramble.
 - **traceability**: traceability is mandatory at three ends: documented requirement (`REQ-*` under `docs/features/`), **source code that implements a REQ cites the ID** (function/constant JSDoc or file header), and tests include a `// Traceability:` comment pointing to the doc.
+
+## Documentation Map
+
+Before writing or updating documentation, consult the map in [docs/index.md](docs/index.md) to find the right home for the content.
+
+- **Feature work** → `docs/features/<feature>/` (README, flows, rules, notes).
+- **Architectural decision** → `docs/DECISIONS.md` (ADR).
+- **Strategy / phase** → `docs/ROADMAP.md`. **Queue / priority** → `docs/BACKLOG.md`.
+- **Operational session-state** (branch, PR, deploy version, next action, last-session narrative) never goes in `docs/ROADMAP.md`, `docs/BACKLOG.md`, or `docs/DECISIONS.md`. To track it, use the optional snapshot `docs/reports/CURRENT_STATE.md` — rewritten each session, never append-only. Narrative history lives in git and PR descriptions.
+- **Do not invent new top-level docs.** If something has no home in the map, propose adding it to the map first.

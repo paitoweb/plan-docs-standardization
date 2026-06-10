@@ -36,6 +36,18 @@ REQUIRED_FILES = [
 
 FEATURE_REQUIRED_FILES = ["README.md", "flows.md", "rules.md", "notes.md"]
 
+INDEX_MAP_NAVIGABLE = [
+    "docs/PROJECT_BRIEF.md",
+    "docs/ARCHITECTURE.md",
+    "docs/GLOSSARY.md",
+    "docs/DECISIONS.md",
+    "docs/ROADMAP.md",
+    "docs/BACKLOG.md",
+    "docs/nfr/NON_FUNCTIONAL.md",
+    "docs/features/INDEX.md",
+    "docs/reports/README.md",
+]
+
 AI_INSTRUCTION_FILES = [
     "CLAUDE.md",
     "AGENTS.md",
@@ -49,6 +61,8 @@ AI_INSTRUCTION_SECTION_HEADINGS = [
 ]
 
 CANONICAL_GUIDELINES_REL = "assets/templates/ai-instructions/guidelines.en.md"
+
+AI_INSTRUCTION_MAP_HEADING = "## Documentation Map"
 
 IGNORED_FILE_NAMES = {".DS_Store"}
 IGNORED_PATH_PARTS = {".obsidian", "__pycache__"}
@@ -135,6 +149,11 @@ def load_canonical_sections() -> dict[str, str]:
             raise ValueError(f"Canonical template missing section: {heading}")
         sections[heading] = section
     return sections
+
+
+def load_canonical_map_section() -> str:
+    text = (skill_root() / CANONICAL_GUIDELINES_REL).read_text(encoding="utf-8")
+    return extract_section(text, AI_INSTRUCTION_MAP_HEADING) or ""
 
 
 def normalize_section_title(raw_title: str) -> str:
@@ -550,6 +569,38 @@ def check_markdown_links(repo: Path, findings: list[Finding]) -> None:
                 )
 
 
+def check_index_map(repo: Path, findings: list[Finding]) -> None:
+    """WARN when docs/index.md is not a navigational map.
+
+    A map links to a strict majority of the navigable canonical docs. Detection is
+    by resolved link target, independent of language. Absent index.md is handled by
+    the required-files check, not here.
+    """
+
+    index_path = repo / "docs" / "index.md"
+    if not index_path.exists():
+        return
+
+    navigable = {(repo / rel).resolve() for rel in INDEX_MAP_NAVIGABLE}
+    linked: set[Path] = set()
+    for _line_number, target in iter_markdown_links(index_path):
+        resolved = resolve_link_target(repo, index_path, target)
+        if resolved is not None:
+            linked.add(resolved.resolve())
+
+    hits = len(navigable & linked)
+    if hits * 2 <= len(INDEX_MAP_NAVIGABLE):  # not a strict majority
+        make_finding(
+            findings,
+            "WARN",
+            "INDEX_MAP_MISSING",
+            "docs/index.md",
+            "docs/index.md lacks a documentation map: it links to "
+            f"{hits} of {len(INDEX_MAP_NAVIGABLE)} canonical docs. A navigational map "
+            "should link to a majority of them.",
+        )
+
+
 def extract_nav_refs(nav_entry: Any) -> list[str]:
     refs: list[str] = []
 
@@ -669,6 +720,17 @@ def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
     return workflow_index is not None, principles_index is not None
 
 
+def references_doc_index(path: Path, repo: Path) -> bool:
+    """True when the markdown file links to docs/index.md (by resolved target)."""
+
+    index_resolved = (repo / "docs" / "index.md").resolve()
+    for _line_number, target in iter_markdown_links(path):
+        resolved = resolve_link_target(repo, path, target)
+        if resolved is not None and resolved.resolve() == index_resolved:
+            return True
+    return False
+
+
 def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
     for rel in AI_INSTRUCTION_FILES:
         path = repo / rel
@@ -703,6 +765,16 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
                 rel,
                 "AI instruction file missing a principles section "
                 "(a heading followed by a bulleted list).",
+            )
+
+        if not references_doc_index(path, repo):
+            make_finding(
+                findings,
+                "INFO",
+                "AI_INSTRUCTION_MAP_POINTER_MISSING",
+                rel,
+                "AI instruction file does not reference docs/index.md (the documentation "
+                "map). Add a pointer so agents consult the map before writing docs.",
             )
 
 
@@ -751,6 +823,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_nfr_file(nfr_file, repo, findings)
     check_markdown_links(repo, findings)
     check_mkdocs_nav(repo, findings)
+    check_index_map(repo, findings)
     check_ai_instruction_files(repo, findings)
 
     sorted_findings = sort_findings(findings)

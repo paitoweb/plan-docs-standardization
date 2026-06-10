@@ -61,7 +61,8 @@ def test_absent_files_report_info(tmp_path):
 
 def test_identical_file_produces_no_finding(tmp_path):
     (tmp_path / "CLAUDE.md").write_text(
-        "# Project\n\n" + _canonical_text() + "\n", encoding="utf-8"
+        "# Project\n\nSee [docs/index.md](docs/index.md).\n\n" + _canonical_text() + "\n",
+        encoding="utf-8",
     )
     findings = []
     adm.check_ai_instruction_files(tmp_path, findings)
@@ -87,4 +88,4 @@ def test_copilot_nested_path_detected(tmp_path):
     findings = []
     adm.check_ai_instruction_files(tmp_path, findings)
     codes = _codes_for(findings, ".github/copilot-instructions.md")
-    assert codes == {"AI_INSTRUCTION_SECTION_MISSING"}
+    assert codes == {"AI_INSTRUCTION_SECTION_MISSING", "AI_INSTRUCTION_MAP_POINTER_MISSING"}

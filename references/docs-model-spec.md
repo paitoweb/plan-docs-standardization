@@ -30,6 +30,23 @@ For each directory under `docs/features/<feature>/`:
 - `rules.md`
 - `notes.md`
 
+## Documentation Ownership Map
+
+`docs/index.md` must be a navigational map: it links to a strict majority of the
+navigable canonical docs (the required set minus `index.md`, `requirements-mkdocs.txt`,
+and `mkdocs.yml`) and states, for each doc/folder, what it answers and what must not go in
+it. In alignment mode, an `index.md` that is not such a map is `WARN` (`INDEX_MAP_MISSING`);
+the richness of the map columns is not audited.
+
+**Boundary rule.** Operational session-state (current branch, open/merged PR, deploy
+version per environment, next physical action, last-session narrative) is not design
+truth. It never goes in `ROADMAP.md`, `BACKLOG.md`, or `DECISIONS.md`. Narrative history
+lives in git history and PR descriptions.
+
+**Optional operational snapshot.** `docs/reports/CURRENT_STATE.md` is an optional living
+snapshot (rewritten each session, never append-only). It is not a required file; its
+absence is never a finding. The skill never auto-creates it.
+
 ## Feature README Minimum Sections
 
 The seven canonical sections (Overview, Requirements, Acceptance Criteria, Dependencies,
@@ -91,6 +108,10 @@ For an existing file, the skill detects two sections structurally, independent o
 language: a workflow section (heading + numbered step list) and a principles section
 (heading + bulleted list). A file missing either shape is a `BLOCKER`; an absent file is
 `INFO`. Content is not compared against the English block, so localized guidelines pass.
+
+Existing AI-instruction files should also link to `docs/index.md` (the documentation map).
+A missing pointer is reported as `INFO` (`AI_INSTRUCTION_MAP_POINTER_MISSING`); it is never
+a `BLOCKER` and the structural shape detection is unchanged.
 
 ## Output Contract
 

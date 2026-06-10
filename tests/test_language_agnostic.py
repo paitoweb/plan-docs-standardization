@@ -104,7 +104,8 @@ def test_detect_shapes_requires_distinct_sections():
 
 
 def test_check_ai_ptbr_file_passes(tmp_path):
-    (tmp_path / "CLAUDE.md").write_text(WORKFLOW_PT + "\n" + PRINCIPLES_PT, encoding="utf-8")
+    pointer = "See [docs/index.md](docs/index.md).\n\n"
+    (tmp_path / "CLAUDE.md").write_text(pointer + WORKFLOW_PT + "\n" + PRINCIPLES_PT, encoding="utf-8")
     findings = []
     adm.check_ai_instruction_files(tmp_path, findings)
     assert [f for f in findings if f.path == "CLAUDE.md"] == []
@@ -114,7 +115,7 @@ def test_check_ai_missing_principles_is_blocker(tmp_path):
     (tmp_path / "CLAUDE.md").write_text(WORKFLOW_PT, encoding="utf-8")
     findings = []
     adm.check_ai_instruction_files(tmp_path, findings)
-    blockers = [f for f in findings if f.path == "CLAUDE.md"]
+    blockers = [f for f in findings if f.path == "CLAUDE.md" and f.severity == "BLOCKER"]
     assert len(blockers) == 1
     assert blockers[0].code == "AI_INSTRUCTION_SECTION_MISSING"
     assert blockers[0].severity == "BLOCKER"
@@ -131,7 +132,7 @@ def test_check_ai_both_shapes_missing_yields_two_blockers(tmp_path):
     (tmp_path / "CLAUDE.md").write_text("# x\nplain prose only\n", encoding="utf-8")
     findings = []
     adm.check_ai_instruction_files(tmp_path, findings)
-    blockers = [f for f in findings if f.path == "CLAUDE.md"]
+    blockers = [f for f in findings if f.path == "CLAUDE.md" and f.severity == "BLOCKER"]
     assert len(blockers) == 2
     assert all(f.code == "AI_INSTRUCTION_SECTION_MISSING" for f in blockers)
     assert any("workflow" in f.message.lower() for f in blockers)
@@ -158,6 +159,12 @@ def test_ai_update_diff_appends_missing_principles(tmp_path):
 
 def test_ai_update_diff_identical_reports_no_changes(tmp_path):
     sections = adm.load_canonical_sections()
-    text = sections["## Workflow: New Feature"] + "\n\n" + sections["## Working Principles"] + "\n"
+    text = (
+        "See [docs/index.md](docs/index.md).\n\n"
+        + sections["## Workflow: New Feature"]
+        + "\n\n"
+        + sections["## Working Principles"]
+        + "\n"
+    )
     (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
     assert plan.ai_instruction_update_diff(tmp_path, "CLAUDE.md") == "No changes required."

@@ -48,7 +48,8 @@ docs/
 │       ├── rules.md            # Business rule decision tables
 │       └── notes.md            # Technical implementation notes
 ├── reports/
-│   └── README.md               # Reports index
+│   ├── README.md               # Reports index
+│   └── CURRENT_STATE.md        # Optional living state snapshot (rewritten each session)
 └── requirements-mkdocs.txt     # Python deps for MkDocs
 mkdocs.yml                      # MkDocs configuration
 ```
@@ -68,6 +69,17 @@ mkdocs.yml                      # MkDocs configuration
 - Every AC-NFR must reference at least one NFR
 - All internal markdown links must resolve
 - All `mkdocs.yml` nav references must resolve
+
+### Documentation map and operational state
+
+`docs/index.md` is a navigational map: it documents what each file/folder answers and what
+must not go in it. Operational session-state (branch, PR, deploy version, next action) is
+not design truth — it never goes in ROADMAP/BACKLOG/DECISIONS; it lives in git/PRs or, if
+you want a readable "where are we now" pointer, in the optional `docs/reports/CURRENT_STATE.md`
+snapshot (rewritten each session, never append-only). In alignment mode the skill warns
+(`INDEX_MAP_MISSING`) when `index.md` is not a map and reports INFO
+(`AI_INSTRUCTION_MAP_POINTER_MISSING`) when an existing AI-instruction file lacks a pointer
+to the map.
 
 > **Language:** Bundled templates are English and bootstrap scaffolds English. In
 > alignment mode the skill is language-agnostic — it infers feature-section expectations
