@@ -23,7 +23,6 @@ SEVERITY_ORDER = {"BLOCKER": 0, "WARN": 1, "INFO": 2}
 CREATE_CODES = {"MISSING_REQUIRED_FILE", "MISSING_FEATURE_FILE"}
 
 IGNORE_ACTION_CODES = {"AI_INSTRUCTION_FILE_ABSENT"}
-AI_INSTRUCTION_FILES = set(adm.AI_INSTRUCTION_FILES)
 
 PLACEHOLDER_HINTS = (
     "[describe",
@@ -288,6 +287,7 @@ def proposed_diffs(
             }
         )
 
+    ai_instruction_targets = set(adm.ai_instruction_targets(repo))
     feature_gaps = adm.compute_feature_section_gaps(repo)
 
     for target_rel in alter_files:
@@ -305,7 +305,7 @@ def proposed_diffs(
                 }
             )
             continue
-        if target_rel in AI_INSTRUCTION_FILES:
+        if target_rel in ai_instruction_targets:
             items.append(
                 {
                     "path": target_rel,
