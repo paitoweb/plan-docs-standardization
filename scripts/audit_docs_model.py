@@ -20,6 +20,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 import agent_profiles as _ap
 import docs_first_config as _dfc
+import enforcement_gates as _eg
 
 KNOWN_ENFORCEMENT_GATES = {"ci", "local-hook", "claude-hooks", "codex-hooks"}
 
@@ -824,6 +825,38 @@ def check_agent_profiles_config(repo: Path, findings: list[Finding]) -> None:
         )
 
 
+def check_enforcement_gates(repo: Path, findings: list[Finding]) -> None:
+    """Reconcile chosen enforcement gates (.docs-first/config.yml) with what is on disk.
+
+    Chosen-but-missing -> WARN. Nothing chosen and nothing present (docs repo only)
+    -> INFO. Never a BLOCKER — the skill never forces a gate.
+    """
+
+    config = _dfc.load_config(repo)
+    chosen = set(config.enforcement_chosen) if config else set()
+    present = {g for g in KNOWN_ENFORCEMENT_GATES if _eg.gate_present(repo, g)}
+
+    for gate in sorted(chosen - present):
+        make_finding(
+            findings,
+            "WARN",
+            "ENFORCEMENT_GATE_MISSING",
+            _eg.GATE_PATHS.get(gate, gate),
+            f"Enforcement gate '{gate}' is chosen in .docs-first/config.yml but not "
+            "installed. Re-install it or remove it from the config.",
+        )
+
+    if not chosen and not present and discover_mode(repo) == "alignment":
+        make_finding(
+            findings,
+            "INFO",
+            "NO_ENFORCEMENT_GATE",
+            ".docs-first/config.yml",
+            "No enforcement gate active. The Docs-First model is advisory only; "
+            "code can drift from docs. Consider a CI/branch-protection or pre-commit gate.",
+        )
+
+
 def summarize(findings: list[Finding]) -> AuditSummary:
     summary = AuditSummary()
     for finding in findings:
@@ -872,6 +905,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_index_map(repo, findings)
     check_ai_instruction_files(repo, findings)
     check_agent_profiles_config(repo, findings)
+    check_enforcement_gates(repo, findings)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)
