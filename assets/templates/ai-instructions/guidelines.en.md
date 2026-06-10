@@ -30,5 +30,5 @@ Before writing or updating documentation, consult the map in [docs/index.md](doc
 - **Feature work** → `docs/features/<feature>/` (README, flows, rules, notes).
 - **Architectural decision** → `docs/DECISIONS.md` (ADR).
 - **Strategy / phase** → `docs/ROADMAP.md`. **Queue / priority** → `docs/BACKLOG.md`.
-- **Operational session-state** (branch, PR, deploy version, next action, last-session narrative) never goes in the plan docs. To track it, use the optional snapshot `docs/reports/CURRENT_STATE.md` — rewritten each session, never append-only. Narrative history lives in git and PR descriptions.
+- **Operational session-state** (branch, PR, deploy version, next action, last-session narrative) never goes in `docs/ROADMAP.md`, `docs/BACKLOG.md`, or `docs/DECISIONS.md`. To track it, use the optional snapshot `docs/reports/CURRENT_STATE.md` — rewritten each session, never append-only. Narrative history lives in git and PR descriptions.
 - **Do not invent new top-level docs.** If something has no home in the map, propose adding it to the map first.
