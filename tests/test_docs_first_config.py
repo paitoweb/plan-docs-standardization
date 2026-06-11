@@ -106,3 +106,19 @@ def test_load_config_with_bad_version_does_not_raise(tmp_path):
     target.write_text("version: oops\nprofiles: [cursor]\n", encoding="utf-8")
     cfg = dfc.load_config(tmp_path)
     assert cfg.profiles == ["cursor"]
+
+
+def test_snapshot_declined_round_trips():
+    cfg = dfc.DocsFirstConfig(profiles=["claude"], snapshot_declined=True)
+    parsed = dfc.parse_config(dfc.render_config(cfg))
+    assert parsed.snapshot_declined is True
+
+
+def test_snapshot_declined_defaults_false_when_absent():
+    parsed = dfc.parse_config("version: 1\nprofiles: [claude]\n")
+    assert parsed.snapshot_declined is False
+
+
+def test_snapshot_declined_line_omitted_when_false():
+    text = dfc.render_config(dfc.DocsFirstConfig(profiles=["claude"]))
+    assert "snapshot_declined" not in text

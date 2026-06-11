@@ -93,11 +93,14 @@ def test_audit_repository_runs_index_map_check(tmp_path):
     assert "INDEX_MAP_MISSING" in codes
 
 
-def test_current_state_absence_is_never_a_finding(tmp_path):
-    # A repo without docs/reports/CURRENT_STATE.md must not produce any finding for it.
+def test_current_state_absence_is_at_most_an_info_suggestion(tmp_path):
+    # A repo without docs/reports/CURRENT_STATE.md may be gently suggested (INFO),
+    # but never WARN/BLOCKER, and never auto-created.
     _write_index(tmp_path, "# Docs\n\nno map\n")
     result = adm.audit_repository(tmp_path)
-    paths = {f["path"] for f in result["findings"]}
-    assert "docs/reports/CURRENT_STATE.md" not in paths
-    codes = {f["code"] for f in result["findings"]}
-    assert not any("CURRENT_STATE" in code for code in codes)
+    cs_findings = [
+        f for f in result["findings"] if f["path"] == "docs/reports/CURRENT_STATE.md"
+    ]
+    assert all(f["severity"] == "INFO" for f in cs_findings)
+    assert {f["code"] for f in cs_findings} <= {"CURRENT_STATE_SUGGESTED"}
+    assert not (tmp_path / "docs" / "reports" / "CURRENT_STATE.md").exists()

@@ -857,6 +857,35 @@ def check_enforcement_gates(repo: Path, findings: list[Finding]) -> None:
         )
 
 
+def check_current_state_suggestion(repo: Path, findings: list[Finding]) -> None:
+    """Recommend the optional operational snapshot when absent (docs repo only).
+
+    INFO, never WARN/BLOCKER, never created. Suppressed when the user has declined
+    it (`snapshot_declined: true` in .docs-first/config.yml) — decisions, not re-asks.
+    """
+
+    if discover_mode(repo) != "alignment":
+        return
+
+    config = _dfc.load_config(repo)
+    if config is not None and config.snapshot_declined:
+        return
+
+    if (repo / "docs" / "reports" / "CURRENT_STATE.md").exists():
+        return
+
+    make_finding(
+        findings,
+        "INFO",
+        "CURRENT_STATE_SUGGESTED",
+        "docs/reports/CURRENT_STATE.md",
+        "Optional operational-state snapshot not present. Consider adopting "
+        "docs/reports/CURRENT_STATE.md (branch, PR, deploy, next action; rewritten each "
+        "session) so status survives across sessions. To stop this suggestion, set "
+        "snapshot_declined: true in .docs-first/config.yml.",
+    )
+
+
 def summarize(findings: list[Finding]) -> AuditSummary:
     summary = AuditSummary()
     for finding in findings:
@@ -906,6 +935,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_ai_instruction_files(repo, findings)
     check_agent_profiles_config(repo, findings)
     check_enforcement_gates(repo, findings)
+    check_current_state_suggestion(repo, findings)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)

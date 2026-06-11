@@ -195,6 +195,12 @@ Gate options (all run the docs audit; `audit_cmd` points at the installed audit 
    (needs admin); degrade gracefully (generate the workflow, instruct the manual toggle) when the
    token lacks rights.
 
+**Claude settings location:** the `claude-hooks` gate is committed to `.claude/settings.json`
+(shared with the team). If the user instead opts to put it in `.claude/settings.local.json` — the
+personal, machine-local variant — that file must **not** be committed: ensure it is gitignored
+(add `.claude/settings.local.json` to `.gitignore`, offered with consent) before writing the hook
+there.
+
 **Persisted choices:** record accepted gates in `.docs-first/config.yml` `enforcement_chosen` and
 refusals in `enforcement_declined` (never re-ask). The audit then reconciles intent vs reality
 (see below). Native hook configs follow documented schemas — verify against the installed tool.
