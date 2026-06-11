@@ -879,9 +879,9 @@ def check_current_state_suggestion(repo: Path, findings: list[Finding]) -> None:
         "INFO",
         "CURRENT_STATE_SUGGESTED",
         "docs/reports/CURRENT_STATE.md",
-        "Optional operational-state snapshot not present. Consider adopting "
-        "docs/reports/CURRENT_STATE.md (branch, PR, deploy, next action; rewritten each "
-        "session) so status survives across sessions. To stop this suggestion, set "
+        "Optional operational-state snapshot not present. Consider adopting the local, "
+        "gitignored snapshot docs/reports/CURRENT_STATE.md (where you are, next action, deploy "
+        "state; rewritten freely each session, never committed). To stop this suggestion, set "
         "snapshot_declined: true in .docs-first/config.yml.",
     )
 
