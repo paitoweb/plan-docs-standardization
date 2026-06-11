@@ -20,6 +20,7 @@ class DocsFirstConfig:
     profiles: list[str] = field(default_factory=list)
     enforcement_chosen: list[str] = field(default_factory=list)
     enforcement_declined: list[str] = field(default_factory=list)
+    snapshot_declined: bool = False
     updated: str | None = None
     version: int = SCHEMA_VERSION
 
@@ -36,6 +37,8 @@ def render_config(cfg: DocsFirstConfig) -> str:
         f"enforcement_chosen: {_fmt_list(cfg.enforcement_chosen)}",
         f"enforcement_declined: {_fmt_list(cfg.enforcement_declined)}",
     ]
+    if cfg.snapshot_declined:
+        lines.append("snapshot_declined: true")
     if cfg.updated is not None:
         lines.append(f"updated: {cfg.updated}")
     return "\n".join(lines) + "\n"
@@ -64,6 +67,18 @@ def _coerce_int(value: object, default: int) -> int:
         return default
 
 
+def _coerce_bool(value: object, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "yes", "1"}:
+            return True
+        if lowered in {"false", "no", "0"}:
+            return False
+    return default
+
+
 def parse_config(text: str) -> DocsFirstConfig:
     data: dict[str, object] = {}
     for line in text.splitlines():
@@ -77,6 +92,7 @@ def parse_config(text: str) -> DocsFirstConfig:
         profiles=list(data.get("profiles", []) or []),
         enforcement_chosen=list(data.get("enforcement_chosen", []) or []),
         enforcement_declined=list(data.get("enforcement_declined", []) or []),
+        snapshot_declined=_coerce_bool(data.get("snapshot_declined", False), False),
         updated=(data.get("updated") or None),
         version=_coerce_int(data.get("version", SCHEMA_VERSION), SCHEMA_VERSION),
     )

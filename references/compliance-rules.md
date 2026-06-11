@@ -97,10 +97,13 @@ target (language-agnostic). Otherwise report `WARN` (`INDEX_MAP_MISSING`). Absen
 An existing AI-instruction file that does not link to `docs/index.md` is reported as `INFO`
 (`AI_INSTRUCTION_MAP_POINTER_MISSING`). Never a `BLOCKER`.
 
-### R015 Optional operational snapshot
+### R015 Optional operational snapshot (INFO suggestion)
 
-`docs/reports/CURRENT_STATE.md` is optional. Its absence is never a finding; the skill
-never creates it.
+`docs/reports/CURRENT_STATE.md` is optional and the skill never creates it. In a docs repo
+(alignment mode), its absence yields a single `INFO` (`CURRENT_STATE_SUGGESTED`) recommending
+adoption — never WARN/BLOCKER. The suggestion is suppressed when the user has declined it
+(`snapshot_declined: true` in `.docs-first/config.yml`); recording the decline follows the
+same write-on-consent rule as every other config change.
 
 ## Classification Rules
 
