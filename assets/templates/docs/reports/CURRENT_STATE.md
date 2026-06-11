@@ -1,7 +1,7 @@
 # Current State
 
-> Present-state snapshot. Rewritten every session — **NOT append-only**.
-> Narrative history lives in git history and PR descriptions.
+> **Local, gitignored scratchpad — never committed.** Present-state snapshot, rewritten
+> freely every session (NOT append-only). Versioned history lives in git and PR descriptions.
 
 ## Where we are
 

@@ -205,6 +205,22 @@ there.
 refusals in `enforcement_declined` (never re-ask). The audit then reconciles intent vs reality
 (see below). Native hook configs follow documented schemas — verify against the installed tool.
 
+## Operational Snapshot (CURRENT_STATE.md)
+
+`docs/reports/CURRENT_STATE.md` is an **optional, local, gitignored** scratchpad for operational
+session-state (where you are, next action, deploy state). It is **never committed**: versioning it
+creates churn (a committed snapshot trails its own merge — "last merge = this very PR" is stale the
+moment it lands) and duplicates what git already knows (branch, last merge). Versioned history lives
+in git and PR descriptions.
+
+- The audit suggests it when absent in a docs repo (`CURRENT_STATE_SUGGESTED`, INFO); suppress with
+  `snapshot_declined: true` in `.docs-first/config.yml`.
+- **On adoption, keep it local (offer with consent):** add `docs/reports/CURRENT_STATE.md` to
+  `.gitignore`; if it is already tracked, also run `git rm --cached docs/reports/CURRENT_STATE.md`
+  (keeps the file on disk, stops tracking it).
+- The canonical block tells agents to update it as they work and to consult it first when the user
+  asks where things stand / what is next.
+
 ## Escalation Policy
 
 - Keep execution non-mutating by default.

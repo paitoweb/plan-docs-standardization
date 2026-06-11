@@ -97,13 +97,15 @@ target (language-agnostic). Otherwise report `WARN` (`INDEX_MAP_MISSING`). Absen
 An existing AI-instruction file that does not link to `docs/index.md` is reported as `INFO`
 (`AI_INSTRUCTION_MAP_POINTER_MISSING`). Never a `BLOCKER`.
 
-### R015 Optional operational snapshot (INFO suggestion)
+### R015 Optional operational snapshot (local, gitignored; INFO suggestion)
 
-`docs/reports/CURRENT_STATE.md` is optional and the skill never creates it. In a docs repo
+`docs/reports/CURRENT_STATE.md` is optional, **local, and gitignored — never committed** (versioning
+it causes churn and duplicates git's branch/last-merge). The skill never creates it. In a docs repo
 (alignment mode), its absence yields a single `INFO` (`CURRENT_STATE_SUGGESTED`) recommending
 adoption — never WARN/BLOCKER. The suggestion is suppressed when the user has declined it
-(`snapshot_declined: true` in `.docs-first/config.yml`); recording the decline follows the
-same write-on-consent rule as every other config change.
+(`snapshot_declined: true` in `.docs-first/config.yml`); recording the decline follows the same
+write-on-consent rule as every other config change. On adoption, the skill ensures the file is
+gitignored (and `git rm --cached` it if already tracked), with consent.
 
 ## Classification Rules
 
