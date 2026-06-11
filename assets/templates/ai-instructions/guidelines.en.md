@@ -11,7 +11,7 @@ Steps in order — each typically corresponds to one interaction. Steps may be c
 5. **Implementation** — implement the approved plan, using TDD when applicable.
 6. **Document** — update `ROADMAP.md` and `BACKLOG.md` if it makes sense, `DECISIONS.md` and `ARCHITECTURE.md` if the decision is architectural, any other documents needed based on the completed implementation, and whatever the feature needs under `docs/features/<feature>/`.
 7. **Tests** — create/update tests (following the traceability principle) and validate (define the method/stack with the user).
-8. **Commit & PR** — commit following the conventions and open a PR referencing REQ-AC and linking to the feature doc (`docs/features/<feature>/`).
+8. **Commit & PR** — commit following the conventions and open a PR referencing REQ-AC and linking to the feature doc (`docs/features/<feature>/`). If `docs/reports/CURRENT_STATE.md` exists, rewrite it to reflect the new branch, PR, and next action (present-state snapshot, never append-only).
 
 ## Working Principles
 
@@ -30,5 +30,5 @@ Before writing or updating documentation, consult the map in [docs/index.md](doc
 - **Feature work** → `docs/features/<feature>/` (README, flows, rules, notes).
 - **Architectural decision** → `docs/DECISIONS.md` (ADR).
 - **Strategy / phase** → `docs/ROADMAP.md`. **Queue / priority** → `docs/BACKLOG.md`.
-- **Operational session-state** (branch, PR, deploy version, next action, last-session narrative) never goes in `docs/ROADMAP.md`, `docs/BACKLOG.md`, or `docs/DECISIONS.md`. To track it, use the optional snapshot `docs/reports/CURRENT_STATE.md` — rewritten each session, never append-only. Narrative history lives in git and PR descriptions.
+- **Operational session-state** (branch, PR, deploy version, next action, last-session narrative) never goes in `docs/ROADMAP.md`, `docs/BACKLOG.md`, or `docs/DECISIONS.md`. To track it, use the optional snapshot `docs/reports/CURRENT_STATE.md` — rewritten each session, never append-only. Narrative history lives in git and PR descriptions. When the user asks where the project stands or what the next steps are, consult `docs/reports/CURRENT_STATE.md` first (if it exists) before answering.
 - **Do not invent new top-level docs.** If something has no home in the map, propose adding it to the map first.
