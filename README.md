@@ -1,10 +1,12 @@
 # plan-docs-standardization
 
-A Claude Code skill that enforces a canonical documentation model for AI-driven software development.
+An AI coding agent skill that enforces a canonical documentation model for AI-driven software development. Works with **Claude Code**, **Cursor**, **Codex**, and any agent that reads a skills directory.
 
 ## What is this?
 
-This is a reusable skill for [Claude Code](https://docs.claude.com) that implements the documentation layer of the **Docs-First** method — an approach where structured documentation leads development, and AI implements from documented decisions rather than ad hoc prompts.
+This is a reusable [agent skill](https://docs.claude.com) that implements the documentation layer of the **Docs-First** method — an approach where structured documentation leads development, and AI implements from documented decisions rather than ad hoc prompts.
+
+The canonical method (the docs model, the audit, the traceability rules) is **agent-agnostic**. Only *delivery* varies per agent — where the always-on instruction lives and how the skill package is hosted. The skill detects which agent(s) your repo uses and adapts automatically.
 
 📖 **Read the full article about the Docs-First method:** [Link to article]
 
@@ -105,21 +107,78 @@ Behavior:
 
 ## Installation
 
-### As a Claude Code user skill
+The method is single; only *delivery* varies per agent. Each agent has a **soft target**
+(the always-on instruction surface) and a **skill package directory** (where the skill is hosted):
 
-1. Clone or download this repository
-2. Copy the `plan-docs-standardization` folder to your Claude Code skills directory:
-   ```bash
-   cp -r plan-docs-standardization ~/.claude/skills/
-   ```
-3. The skill will be available in your Claude Code sessions
+| Agent | Always-on soft target | Skill package directory |
+|-------|----------------------|-------------------------|
+| Claude Code | `CLAUDE.md` | `.claude/skills/plan-docs-standardization/` |
+| Cursor | `.cursor/rules/docs-first.mdc` (`alwaysApply: true`) | `.cursor/skills/plan-docs-standardization/` |
+| Codex | `AGENTS.md` | `.agents/skills/plan-docs-standardization/` |
+| Generic | `AGENTS.md` | — (no hosted package) |
 
-### As a project-level skill
+First clone or download this repository, then follow the section for your agent.
 
-1. Copy the folder into your project:
-   ```bash
-   cp -r plan-docs-standardization /your-project/.claude/skills/
-   ```
+### Claude Code
+
+Copy the skill folder to your user skills directory (available in every session):
+
+```bash
+cp -r plan-docs-standardization ~/.claude/skills/
+```
+
+Or scope it to a single project:
+
+```bash
+cp -r plan-docs-standardization /your-project/.claude/skills/
+```
+
+### Cursor
+
+**Cursor v2.4+** reads `.claude/skills/` natively — if you already installed the skill for
+Claude Code (user or project level), Cursor picks it up automatically; nothing else to do.
+
+To host it under Cursor's own skills directory instead:
+
+```bash
+cp -r plan-docs-standardization /your-project/.cursor/skills/
+```
+
+Optionally generate the always-on rule so the Docs-First workflow is applied on every request:
+
+```bash
+python3 plan-docs-standardization/scripts/render_profile_artifacts.py cursor \
+  > /your-project/.cursor/rules/docs-first.mdc
+```
+
+This writes a `.mdc` rule with `alwaysApply: true` containing the canonical
+**Workflow: New Feature** and **Working Principles** blocks.
+
+### Codex
+
+Copy the skill folder into the agents skills directory:
+
+```bash
+cp -r plan-docs-standardization /your-project/.agents/skills/
+```
+
+The always-on instruction surface is `AGENTS.md`. Generate the canonical block to append:
+
+```bash
+python3 plan-docs-standardization/scripts/render_profile_artifacts.py codex
+```
+
+### Generic agent
+
+Any agent that reads an instructions file can use the method. Generate the canonical
+guidelines block and add it to your agent's instruction file (e.g. `AGENTS.md`):
+
+```bash
+python3 plan-docs-standardization/scripts/render_profile_artifacts.py generic
+```
+
+> The skill **never auto-creates** soft-target files. When a target is absent it reports
+> an `INFO` finding and offers to install it with your consent — it does not write without asking.
 
 ## Usage
 
