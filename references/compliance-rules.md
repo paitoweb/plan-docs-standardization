@@ -14,6 +14,10 @@ Ignore non-canonical paths:
 - files named `.DS_Store`
 - any path containing `.obsidian/`
 - hidden OS/editor artifacts
+- everything under `docs/superpowers/specs/` — design-doc artifacts are outside the model
+  (`docs/features/` is the single source of truth for feature behavior). The subtree is not
+  audited at all: a dated design doc is abandoned by definition, so its stale internal links
+  must never produce a `BROKEN_INTERNAL_LINK` blocker.
 
 ## Rule Set
 

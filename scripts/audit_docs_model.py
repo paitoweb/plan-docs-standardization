@@ -73,6 +73,11 @@ AI_INSTRUCTION_MAP_HEADING = "## Documentation Map"
 IGNORED_FILE_NAMES = {".DS_Store"}
 IGNORED_PATH_PARTS = {".obsidian", "__pycache__"}
 
+# Design-doc artifacts produced by tooling sit outside the model: docs/features/ is the
+# single source of truth for feature behavior. A dated design doc is abandoned by
+# definition, so the subtree is excluded entirely — its stale links must not fail the gate.
+IGNORED_DOCS_SUBTREES = ("docs/superpowers/specs",)
+
 REQ_ID_RE = re.compile(r"\bREQ-[A-Z0-9-]+-\d{3}\b")
 AC_ID_RE = re.compile(r"\bAC-[A-Z0-9-]+-\d{3}\b")
 NFR_ID_RE = re.compile(r"\bNFR-\d{3}\b")
@@ -260,6 +265,18 @@ def check_feature_section_consistency(repo: Path, findings: list[Finding]) -> No
 
 def should_ignore_path(path: Path) -> bool:
     return any(part in IGNORED_PATH_PARTS for part in path.parts) or path.name in IGNORED_FILE_NAMES
+
+
+def is_ignored_docs_subtree(path: Path, repo: Path) -> bool:
+    """True when path lives in a docs subtree the model excludes (design-doc artifacts)."""
+
+    try:
+        rel = path.resolve().relative_to(repo.resolve()).as_posix()
+    except ValueError:
+        return False
+    return any(
+        rel == prefix or rel.startswith(prefix + "/") for prefix in IGNORED_DOCS_SUBTREES
+    )
 
 
 def iter_code_span_tokens(text: str) -> Iterable[str]:
@@ -556,7 +573,7 @@ def check_markdown_links(repo: Path, findings: list[Finding]) -> None:
         return
 
     for md_file in sorted(docs_dir.rglob("*.md")):
-        if should_ignore_path(md_file):
+        if should_ignore_path(md_file) or is_ignored_docs_subtree(md_file, repo):
             continue
         rel = str(md_file.relative_to(repo))
 

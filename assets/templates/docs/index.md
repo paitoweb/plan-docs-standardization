@@ -21,6 +21,14 @@ What each document and folder is for — and what does **not** belong in it.
 | [Features](features/INDEX.md) | "Requirements, flows, rules, notes per feature" | REQ / AC per feature | When the feature evolves | Operational state |
 | [Reports](reports/README.md) | "What was verified/investigated + where we are now" | Report / snapshot | Reports: per event · `CURRENT_STATE`: per session | Design truth |
 
+> **Single source of truth for features.** `features/` is the only place a feature's
+> behavior is documented. Design/brainstorm documents produced by tooling — e.g.
+> `docs/superpowers/specs/` — are **not part of this model**: they are dated records of one
+> execution, never consulted as current behavior, and never a substitute for a feature doc.
+> Point design/brainstorming skills at `features/<feature>/` instead. Implementation plans
+> (e.g. `docs/superpowers/plans/`) may stay outside `features/` — a plan is history and dies
+> at merge.
+
 > **Boundary rule.** Operational session-state — current branch, open/merged PR, deploy
 > version per environment, the next physical action, the last session's narrative — is
 > **not design truth**. It never goes in `ROADMAP.md`, `BACKLOG.md`, or `DECISIONS.md`.

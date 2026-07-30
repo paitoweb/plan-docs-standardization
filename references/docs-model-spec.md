@@ -47,6 +47,26 @@ lives in git history and PR descriptions.
 snapshot (rewritten each session, never append-only). It is not a required file; its
 absence is never a finding. The skill never auto-creates it.
 
+## Feature Documentation Is The Spec
+
+`docs/features/<feature>/` is the single source of truth for a feature's behavior. There is
+no separate "spec" artifact in this model: the spec *is* the feature doc — versioned,
+editable when behavior changes.
+
+Design/brainstorm documents produced by tooling (canonically `docs/superpowers/specs/`) are
+**outside the model**. A dated design doc records one execution's intent; once the
+implementation evolves it silently lies, so it is never read as current behavior and never
+counts as documenting a feature. The skill's canonical guidelines block therefore instructs
+agents to redirect a design/brainstorming skill's spec output into
+`docs/features/<feature>/`, mapping design sections onto the canonical files
+(`README.md` for overview/REQ/AC, `flows.md`, `rules.md`, `notes.md`, and `DECISIONS.md`
+for architectural decisions).
+
+Implementation *plans* are the legitimate process artifact and may live outside
+`docs/features/` (canonically `docs/superpowers/plans/`): a plan is the step sequence of one
+execution, born dated and dead at merge. Plans are not part of the required set; their
+absence is never a finding.
+
 ## Feature README Minimum Sections
 
 The seven canonical sections (Overview, Requirements, Acceptance Criteria, Dependencies,
@@ -82,6 +102,9 @@ Where:
 - `.obsidian/`
 - editor-specific metadata
 - OS cache files
+- `docs/superpowers/specs/` — design-doc artifacts, outside the model (see
+  *Feature Documentation Is The Spec*). Excluded from the audit entirely: a dead design doc
+  is not maintained, so its stale links must not fail the gate.
 
 ## AI Instruction Files (optional, never created)
 
