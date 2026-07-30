@@ -78,6 +78,11 @@ FEATURE_DOCS_REF = "docs/features/"
 
 DEFAULT_DIFF_BASE = "origin/main"
 
+# Marks a claim in a feature doc that has not yet been read against the implementation.
+# Same `docs-first:` token family as the --diff escape hatch; deliberately not bracketed,
+# since a [bracketed] token reads as a markdown link and as a template placeholder.
+UNVERIFIED_MARKER = "docs-first:unverified"
+
 # Opt-out marker, honored anywhere in the range's commit messages: some changes legitimately
 # touch code without touching a feature doc (refactors, chores, build config).
 DIFF_SKIP_MARKER = "docs-first: skip"
@@ -760,6 +765,54 @@ def check_feature_indexing(repo: Path, findings: list[Finding]) -> None:
             )
 
 
+def spec_to_candidate_slug(spec_filename: str) -> str:
+    """Candidate feature slug for a legacy design-doc filename.
+
+    `2026-06-09-voice-transcription-design.md` -> `voice-transcription`. A *candidate*: the
+    filename suggests what the feature might be called, nothing more.
+    """
+
+    stem = re.sub(r"\.md$", "", spec_filename)
+    stem = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", stem)
+    stem = re.sub(r"-design$", "", stem)
+    return stem
+
+
+def check_unverified_claims(repo: Path, findings: list[Finding]) -> None:
+    """WARN per feature whose doc still carries claims not read against the code.
+
+    Migrating a legacy design doc must not launder stale content into the source of truth:
+    a dated spec drifts from the implementation, so every claim copied out of one is a
+    hypothesis until confirmed. The marker records that state; this rule keeps it tracked,
+    so it cannot age quietly into truth -- which is precisely how the design doc came to
+    lie in the first place.
+
+    WARN, never BLOCKER: blocking would force whole-feature verification before anything
+    can land, making incremental migration impossible.
+    """
+
+    for feature_dir in collect_feature_dirs(repo):
+        occurrences = 0
+        for path in sorted(feature_dir.rglob("*.md")):
+            if should_ignore_path(path):
+                continue
+            occurrences += path.read_text(encoding="utf-8").count(UNVERIFIED_MARKER)
+
+        if not occurrences:
+            continue
+
+        make_finding(
+            findings,
+            "WARN",
+            "FEATURE_DOC_UNVERIFIED",
+            str(feature_dir.relative_to(repo)),
+            f"{occurrences} claim(s) marked '{UNVERIFIED_MARKER}' in this feature doc have "
+            "not been read against the implementation. Confirm each against the code and "
+            "remove the marker; until then this doc is a hypothesis, not the source of "
+            "truth.",
+        )
+
+
 def check_specs_outside_feature_docs(repo: Path, findings: list[Finding]) -> None:
     """WARN once per excluded design-doc subtree that still holds documents.
 
@@ -1403,6 +1456,7 @@ def audit_repository(repo: Path, diff_base: str | None = None) -> dict[str, Any]
     check_feature_section_consistency(repo, findings)
     check_feature_indexing(repo, findings)
     check_code_to_docs_coverage(repo, findings)
+    check_unverified_claims(repo, findings)
     check_specs_outside_feature_docs(repo, findings)
 
     nfr_file = repo / "docs" / "nfr" / "NON_FUNCTIONAL.md"

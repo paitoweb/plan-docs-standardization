@@ -269,6 +269,22 @@ architecture (`main/`, `renderer/`, `components/`, `hooks/`) has directories per
 feature. It is deliberately one finding rather than one per directory — an audit that marks
 every folder teaches you to ignore it. `feature_map` is the precise instrument.
 
+### Migrating legacy design docs
+
+If you have design docs from a brainstorming workflow (`docs/superpowers/specs/`) and no
+feature docs, the plan emits a migration worklist: one row per design doc with a candidate
+slug and the four target files — structure only, all deferred, never a create diff.
+
+**The spec is a lead; the code is the source.** A dated design doc drifts from the
+implementation, so transcribing it moves stale claims into the one place that must not lie.
+Today the stale spec is visibly history; migrated unchecked, it becomes "current truth" lying
+with authority. So: read the code, write the four files from what it actually does, and mark
+anything you could not confirm with `docs-first:unverified`.
+
+Those markers are tracked (`FEATURE_DOC_UNVERIFIED`, WARN, one per feature) so they cannot age
+into truth unnoticed — a marker nobody follows up on is worse than none. The finding clears
+when the last one is removed. It never blocks, so migration can be incremental.
+
 ## The Docs-First cycle
 
 This skill is the starting point of a broader development method:

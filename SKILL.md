@@ -201,6 +201,23 @@ For Claude/Codex, append the canonical block to the user's existing `CLAUDE.md`/
 `DOCS_FIRST_CONFIG_INVALID` (`WARN`) for unknown profile or enforcement-gate keys, malformed
 `feature_map` entries, and a `coverage_min` outside 0–100. Absent file is never a finding.
 
+## Legacy Spec Migration
+
+When a repository has design docs under `docs/superpowers/specs/` with no feature doc, the
+plan emits a `Legacy Spec Migration` subsection: one row per design doc, a candidate slug, and
+the four target files — **structure only, all deferred**, never a create diff.
+
+**The spec is a lead; the code is the source.** A dated design doc drifts from the
+implementation, so transcribing it would launder stale claims into the one place that must not
+lie. Today's stale spec is visibly history; migrated unchecked, it becomes "current truth"
+lying with authority. Per feature: read the implementation, write the four files from what the
+code does, mark anything you could not confirm with `docs-first:unverified`, link the feature
+from `INDEX.md` and the nav, then delete the design doc.
+
+`FEATURE_DOC_UNVERIFIED` (`WARN`, one aggregate per feature) tracks the markers so they cannot
+age into truth unnoticed; it clears when the last one is removed. Never a `BLOCKER` —
+otherwise a whole feature would have to be verified before anything could land.
+
 ## Code-to-Docs Coverage
 
 The audit otherwise reads only `docs/`, so a feature can ship fully implemented and fully

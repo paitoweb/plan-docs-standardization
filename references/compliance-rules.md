@@ -134,6 +134,24 @@ adoption — never WARN/BLOCKER. The suggestion is suppressed when the user has 
 write-on-consent rule as every other config change. On adoption, the skill ensures the file is
 gitignored (and `git rm --cached` it if already tracked), with consent.
 
+### R020 Unverified claims in a feature doc (WARN)
+
+A feature doc containing the marker `docs-first:unverified` is reported as
+`FEATURE_DOC_UNVERIFIED` — **one aggregate `WARN` per feature**, with the occurrence count.
+
+The marker exists for migration from legacy design docs. A dated spec drifts from the
+implementation, so every claim copied out of one is a hypothesis until read against the code.
+Recording that state is not enough on its own: an untracked marker ages quietly into truth,
+which is exactly how the design doc came to lie. This rule keeps it visible until it is
+resolved, and the finding clears when the last marker is removed.
+
+`WARN`, never `BLOCKER`: blocking would force whole-feature verification before anything can
+land, making incremental migration impossible.
+
+The token is `docs-first:unverified`, the same family as `docs-first: skip` (R018), and
+deliberately not bracketed — a `[bracketed]` token reads as a markdown link and as a template
+placeholder.
+
 ### R019 Code exists, feature doc does not (BLOCKER / WARN)
 
 Two instruments with very different precision, deliberately kept apart.
@@ -258,6 +276,7 @@ Use strict immediate alignment defaults:
   base => `WARN`
 - Mapped code path with no feature doc => `BLOCKER`; low coverage ratio => `WARN`
   (`BLOCKER` only when `coverage_gate: true`)
+- Feature doc carrying `docs-first:unverified` markers => `WARN`
 - Missing documentation map in `index.md` => `WARN`
 - Missing `docs/index.md` pointer in an AI-instruction file => `INFO`
 
@@ -273,6 +292,24 @@ When generating the plan:
 4. Produce proposed diffs for missing files using templates only when the rendered output is not placeholder-only.
 5. If a missing file can only be scaffolded with placeholders and there is no explicit writing task/content, mark as deferred creation with reason (do not emit create diff).
 6. Do not apply changes.
+
+### Legacy Spec Migration
+
+When design documents exist with no corresponding feature doc, the plan adds a
+`Legacy Spec Migration` subsection under the alignment plan: one row per design doc with a
+candidate slug (derived from the filename, minus a leading date and a `-design` suffix) and
+the four target files.
+
+**Structure only — never a create diff.** The content must come from reading the
+implementation, not from the design doc: a dated spec drifts, so transcribing it would
+launder stale claims into the source of truth. All four targets therefore land in deferred
+creation with that reason, which is the same guardrail that blocks placeholder scaffolding.
+
+The rendered procedure is: read the code → write the four files from what the code does →
+mark anything unconfirmed with `docs-first:unverified` (R020) → link the feature from
+`INDEX.md` and the nav (R017) → delete the design doc, clearing `SPEC_OUTSIDE_FEATURE_DOCS`
+(R016). Specs whose candidate slug already has a feature doc are skipped, folding naming
+conventions.
 
 ## Non-Mutation Constraint
 

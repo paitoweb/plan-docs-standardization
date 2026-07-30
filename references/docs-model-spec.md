@@ -66,6 +66,13 @@ Alignment reports a design document found there as a single aggregate `WARN`
 (`SPEC_OUTSIDE_FEATURE_DOCS`, R016), which persists until the folder is empty: the fix is to
 migrate what is still true into the feature docs and delete the rest.
 
+**Migration derives content from the code, not from the spec.** The plan proposes the target
+structure per design doc and defers all content: a dated spec has likely drifted, so
+transcribing it would move stale claims into the source of truth — where they would no longer
+look like history. Claims that could not be confirmed against the implementation carry the
+marker `docs-first:unverified`, tracked by `FEATURE_DOC_UNVERIFIED` (`WARN`, R020) until
+resolved.
+
 Implementation *plans* are the legitimate process artifact and may live outside
 `docs/features/` (canonically `docs/superpowers/plans/`): a plan is the step sequence of one
 execution, born dated and dead at merge. Plans are not part of the required set; their
