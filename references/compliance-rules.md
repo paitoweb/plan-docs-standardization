@@ -8,6 +8,9 @@ Run checks in read-only mode over:
 - `docs/**/*.md`
 - `docs/requirements-mkdocs.txt`
 - existing AI-instruction files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`)
+- `.docs-first/config.yml` when present
+- in `--diff` mode only: the list of paths changed against the diff base, read with
+  `git diff --name-only` (read-only; file contents outside `docs/` are never read)
 
 Ignore non-canonical paths:
 
@@ -129,6 +132,37 @@ adoption — never WARN/BLOCKER. The suggestion is suppressed when the user has 
 write-on-consent rule as every other config change. On adoption, the skill ensures the file is
 gitignored (and `git rm --cached` it if already tracked), with consent.
 
+### R018 Diff touches code but no feature doc (BLOCKER, opt-in via `--diff`)
+
+Only runs when `--diff [BASE]` is passed (default base `origin/main`); the plain audit is
+unchanged. The audit is otherwise blind to code, so a feature can ship fully implemented and
+fully undocumented while every other rule passes. This is the cheap PR-time backstop:
+`DIFF_CODE_WITHOUT_FEATURE_DOC` when the diff changes code files and nothing under
+`docs/features/`.
+
+The range is `BASE...HEAD` (three-dot) — what the branch contributes, not what landed on the
+base meanwhile. `git diff`/`git log` are read-only, so this respects the planning-only
+guardrail.
+
+**What counts as code** is an extension allowlist (`DEFAULT_CODE_EXTENSIONS`), not
+"everything that is not a doc": the latter flags a lockfile bump or a CI tweak as feature
+work, and a rule that cries wolf on every chore is a rule people turn off. Override per repo
+with `code_extensions` in `.docs-first/config.yml` (replaces the default set).
+
+**Test paths are exempt by default** (`tests/`, `test/`, `spec/`, `*.test.*`, `*_test.*`,
+…): a test-only change ships no behavior, and nothing is lost because a feature that ships
+code *and* tests is still caught by its code files. `diff_exempt_globs` in the config
+**extends** these defaults; it never replaces them.
+
+**Escape hatch:** `docs-first: skip` anywhere in the range's commit messages (honored across
+the whole range, not just `HEAD`, because in CI `HEAD` is often a merge commit whose message
+nobody wrote).
+
+An unresolvable base, or an unavailable `git`, is `DIFF_BASE_UNRESOLVED` (`WARN`) and the
+check is skipped — never a `BLOCKER`, because failing a pipeline over a missing ref punishes
+the wrong mistake. Note that `actions/checkout` clones shallow by default, which makes
+`origin/main` unresolvable; the generated CI workflow therefore sets `fetch-depth: 0`.
+
 ### R017 Feature reachable from the index and the nav (BLOCKER)
 
 Every directory under `docs/features/` must be reachable:
@@ -181,6 +215,8 @@ Use strict immediate alignment defaults:
 - Broken traceability => `BLOCKER`
 - Broken links or nav references => `BLOCKER`
 - Feature folder unreachable from `features/INDEX.md` or the nav => `BLOCKER`
+- In `--diff` mode, code changed with no feature doc touched => `BLOCKER`; unresolvable diff
+  base => `WARN`
 - Missing documentation map in `index.md` => `WARN`
 - Missing `docs/index.md` pointer in an AI-instruction file => `INFO`
 
@@ -205,6 +241,9 @@ The compliance scripts and skill execution must not:
 - run formatters in write mode
 - run code generation that mutates tracked files
 - run migration commands
+
+Read-only inspection commands are allowed, including the `git diff`/`git log`/`git rev-parse`
+calls that back `--diff` mode.
 
 Additionally, the skill must never create AI instruction files. For absent
 `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.github/copilot-instructions.md`, output only an

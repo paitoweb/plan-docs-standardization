@@ -230,7 +230,22 @@ python3 scripts/build_docs_alignment_plan.py /path/to/repo
 
 # Output as JSON for tooling integration
 python3 scripts/audit_docs_model.py /path/to/repo --format json
+
+# PR-time code<->docs check (opt-in): fails when the diff touches code
+# but nothing under docs/features/. Default base is origin/main.
+python3 scripts/audit_docs_model.py /path/to/repo --diff
+python3 scripts/audit_docs_model.py /path/to/repo --diff upstream/dev
 ```
+
+`--diff` exists because the rest of the audit only reads `docs/` — a feature can ship fully
+implemented and fully undocumented while every rule passes. It reads changed *paths* only
+(`git diff --name-only`), never file contents outside `docs/`.
+
+Defaults chosen to avoid crying wolf: only source extensions count as code (a lockfile bump
+or CI tweak does not), and test paths are exempt since a test-only change ships no behavior.
+Tune with `code_extensions` and `diff_exempt_globs` in `.docs-first/config.yml`; exempt an
+individual change with `docs-first: skip` in a commit message. An unresolvable base is a WARN,
+never a BLOCKER.
 
 ## The Docs-First cycle
 

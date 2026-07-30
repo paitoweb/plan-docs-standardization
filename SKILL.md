@@ -100,6 +100,21 @@ python3 scripts/audit_docs_model.py <repo-path> --format json
 python3 scripts/audit_docs_model.py <repo-path> --format markdown
 ```
 
+PR-time code↔docs check (opt-in; the plain audit is unchanged):
+
+```bash
+python3 scripts/audit_docs_model.py <repo-path> --diff              # base origin/main
+python3 scripts/audit_docs_model.py <repo-path> --diff upstream/dev
+```
+
+Fails (`DIFF_CODE_WITHOUT_FEATURE_DOC`, `BLOCKER`) when the diff changes code and nothing
+under `docs/features/`. Test paths are exempt by default; extend with `diff_exempt_globs`
+and redefine what code means with `code_extensions` in `.docs-first/config.yml`. Escape
+hatch for refactors/chores: `docs-first: skip` in any commit message of the range. An
+unresolvable base is a `WARN`, never a `BLOCKER`. To use it in the `ci` gate, pass the flag
+in `audit_cmd`; the generated workflow already sets `fetch-depth: 0` so `origin/main`
+resolves.
+
 ### 2) Build alignment plan (read-only)
 
 ```bash

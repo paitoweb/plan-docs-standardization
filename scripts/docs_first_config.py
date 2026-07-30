@@ -21,6 +21,10 @@ class DocsFirstConfig:
     enforcement_chosen: list[str] = field(default_factory=list)
     enforcement_declined: list[str] = field(default_factory=list)
     snapshot_declined: bool = False
+    # --diff mode only. Paths matching these globs never count as code (build output,
+    # lockfiles, generated clients), and these extensions define what "code" means.
+    diff_exempt_globs: list[str] = field(default_factory=list)
+    code_extensions: list[str] = field(default_factory=list)
     updated: str | None = None
     version: int = SCHEMA_VERSION
 
@@ -39,6 +43,10 @@ def render_config(cfg: DocsFirstConfig) -> str:
     ]
     if cfg.snapshot_declined:
         lines.append("snapshot_declined: true")
+    if cfg.diff_exempt_globs:
+        lines.append(f"diff_exempt_globs: {_fmt_list(cfg.diff_exempt_globs)}")
+    if cfg.code_extensions:
+        lines.append(f"code_extensions: {_fmt_list(cfg.code_extensions)}")
     if cfg.updated is not None:
         lines.append(f"updated: {cfg.updated}")
     return "\n".join(lines) + "\n"
@@ -93,6 +101,8 @@ def parse_config(text: str) -> DocsFirstConfig:
         enforcement_chosen=list(data.get("enforcement_chosen", []) or []),
         enforcement_declined=list(data.get("enforcement_declined", []) or []),
         snapshot_declined=_coerce_bool(data.get("snapshot_declined", False), False),
+        diff_exempt_globs=list(data.get("diff_exempt_globs", []) or []),
+        code_extensions=list(data.get("code_extensions", []) or []),
         updated=(data.get("updated") or None),
         version=_coerce_int(data.get("version", SCHEMA_VERSION), SCHEMA_VERSION),
     )

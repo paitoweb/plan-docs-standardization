@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
+import subprocess
 import sys
 import unicodedata
 from dataclasses import asdict, dataclass
@@ -73,6 +75,40 @@ AI_INSTRUCTION_MAP_HEADING = "## Documentation Map"
 # The path the workflow must route feature work through. A literal path, so requiring it
 # keeps the content check language-agnostic.
 FEATURE_DOCS_REF = "docs/features/"
+
+DEFAULT_DIFF_BASE = "origin/main"
+
+# Opt-out marker, honored anywhere in the range's commit messages: some changes legitimately
+# touch code without touching a feature doc (refactors, chores, build config).
+DIFF_SKIP_MARKER = "docs-first: skip"
+
+# What counts as "code" in --diff mode. An extension allowlist, not "everything that is not
+# a doc": the latter flags a lockfile bump or a CI tweak as feature work, and a rule that
+# cries wolf on every chore is a rule people turn off. Extend per repo with
+# `code_extensions` in .docs-first/config.yml.
+# Test paths are exempt by default. A test-only change ships no behavior, so flagging it
+# would be a false positive; and nothing is lost, because a feature that ships code *and*
+# tests is still caught by its code files. Config globs extend this set, never replace it.
+DEFAULT_DIFF_EXEMPT_GLOBS = (
+    "tests/*",
+    "test/*",
+    "spec/*",
+    "*/tests/*",
+    "*/test/*",
+    "*/__tests__/*",
+    "*.test.*",
+    "*.spec.*",
+    "*_test.*",
+    "*_spec.*",
+)
+
+DEFAULT_CODE_EXTENSIONS = frozenset(
+    {
+        ".c", ".cc", ".cpp", ".cs", ".dart", ".ex", ".exs", ".go", ".h", ".hpp", ".java",
+        ".js", ".jsx", ".kt", ".kts", ".m", ".mm", ".php", ".py", ".rb", ".rs", ".scala",
+        ".sql", ".svelte", ".swift", ".ts", ".tsx", ".vue",
+    }
+)
 
 IGNORED_FILE_NAMES = {".DS_Store"}
 IGNORED_PATH_PARTS = {".obsidian", "__pycache__"}
@@ -426,6 +462,114 @@ def check_feature_readme(readme_path: Path, repo: Path, findings: list[Finding])
                 f"AC heading references unknown REQ IDs: {', '.join(unknown_refs)}",
                 line=line_number,
             )
+
+
+def git_output(repo: Path, args: list[str]) -> str | None:
+    """Run a read-only git command; None when git fails or is unavailable.
+
+    Read-only by construction, so this does not breach the planning-only guardrail.
+    """
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError):  # pragma: no cover - git absent from PATH
+        return None
+
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def is_code_path(path: str, extensions: set[str], exempt_globs: list[str]) -> bool:
+    if any(fnmatch.fnmatch(path, pattern) for pattern in exempt_globs):
+        return False
+    return Path(path).suffix.lower() in extensions
+
+
+def check_diff_feature_docs(repo: Path, findings: list[Finding], base: str) -> None:
+    """BLOCKER when a diff touches code but no feature doc. Only runs with --diff.
+
+    Cheap PR-time enforcement: the audit is otherwise blind to code, so a feature can ship
+    fully implemented and fully undocumented while every rule passes. This does not attempt
+    to decide *which* feature doc was owed -- only that shipping code while touching no
+    feature doc at all is a gap worth stopping.
+
+    An unresolvable base or an unavailable git is a WARN, never a BLOCKER: failing someone's
+    pipeline because a ref is missing punishes the wrong mistake.
+    """
+
+    config = _dfc.load_config(repo)
+    exempt_globs = list(DEFAULT_DIFF_EXEMPT_GLOBS)
+    if config:
+        exempt_globs.extend(config.diff_exempt_globs)
+    extensions = {ext.lower() for ext in (config.code_extensions if config else [])}
+    if not extensions:
+        extensions = set(DEFAULT_CODE_EXTENSIONS)
+
+    if git_output(repo, ["rev-parse", "--verify", base]) is None:
+        make_finding(
+            findings,
+            "WARN",
+            "DIFF_BASE_UNRESOLVED",
+            base,
+            f"Cannot resolve diff base {base!r} (or git is unavailable), so the "
+            "code-without-feature-doc check was skipped. Pass an existing ref via "
+            "--diff <ref>.",
+        )
+        return
+
+    # Three-dot: changes on this branch since it diverged from base, which is what a PR
+    # actually contributes -- not everything that landed on base meanwhile.
+    names = git_output(repo, ["diff", "--name-only", f"{base}...HEAD"])
+    if names is None:
+        make_finding(
+            findings,
+            "WARN",
+            "DIFF_BASE_UNRESOLVED",
+            base,
+            f"git diff against {base!r} failed, so the code-without-feature-doc check "
+            "was skipped.",
+        )
+        return
+
+    changed = [line.strip() for line in names.splitlines() if line.strip()]
+    if not changed:
+        return
+
+    # Honored anywhere in the range, not just HEAD: in CI HEAD is often a merge commit whose
+    # message nobody wrote.
+    commit_messages = git_output(repo, ["log", "--pretty=%B", f"{base}...HEAD"]) or ""
+    if DIFF_SKIP_MARKER in commit_messages:
+        return
+
+    if any(path.startswith(FEATURE_DOCS_REF) for path in changed):
+        return
+
+    code_paths = sorted(
+        path for path in changed if is_code_path(path, extensions, exempt_globs)
+    )
+    if not code_paths:
+        return
+
+    listed = ", ".join(code_paths[:5])
+    if len(code_paths) > 5:
+        listed += f", +{len(code_paths) - 5} more"
+
+    make_finding(
+        findings,
+        "BLOCKER",
+        "DIFF_CODE_WITHOUT_FEATURE_DOC",
+        FEATURE_DOCS_REF,
+        f"{len(code_paths)} code file(s) changed against {base} with no change under "
+        f"docs/features/: {listed}. Document the behavior in the feature doc, or mark the "
+        f"change exempt with '{DIFF_SKIP_MARKER}' in a commit message (refactors, chores, "
+        "build config) or via diff_exempt_globs in .docs-first/config.yml.",
+    )
 
 
 def check_feature_indexing(repo: Path, findings: list[Finding]) -> None:
@@ -1096,7 +1240,7 @@ def sort_findings(findings: list[Finding]) -> list[Finding]:
     return sorted(findings, key=key)
 
 
-def audit_repository(repo: Path) -> dict[str, Any]:
+def audit_repository(repo: Path, diff_base: str | None = None) -> dict[str, Any]:
     repo = repo.resolve()
     findings: list[Finding] = []
 
@@ -1124,6 +1268,9 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_agent_profiles_config(repo, findings)
     check_enforcement_gates(repo, findings)
     check_current_state_suggestion(repo, findings)
+
+    if diff_base is not None:
+        check_diff_feature_docs(repo, findings, diff_base)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)
@@ -1179,6 +1326,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default="markdown",
         help="Output format",
     )
+    parser.add_argument(
+        "--diff",
+        nargs="?",
+        const=DEFAULT_DIFF_BASE,
+        default=None,
+        metavar="BASE",
+        dest="diff_base",
+        help=(
+            "Also fail when the diff against BASE "
+            f"(default {DEFAULT_DIFF_BASE}) touches code but no feature doc. "
+            "Intended for PR CI."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -1186,7 +1346,7 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     repo = Path(args.repo)
 
-    result = audit_repository(repo)
+    result = audit_repository(repo, diff_base=args.diff_base)
 
     if args.format == "json":
         print(json.dumps(result, indent=2, ensure_ascii=False))
