@@ -71,6 +71,11 @@ mkdocs.yml                      # MkDocs configuration
 - Every AC-NFR must reference at least one NFR
 - All internal markdown links must resolve
 - All `mkdocs.yml` nav references must resolve
+- And the reverse direction: every feature folder must be reachable — linked from
+  `docs/features/INDEX.md` and present in the nav (both BLOCKER). A feature the reader
+  cannot find is undocumented in practice. Nav coverage is only enforced when your nav
+  already lists features, so file-less nav plugins (awesome-pages, literate-nav) are not
+  penalized. **Breaking change** if you documented features without indexing them.
 
 ### Documentation map and operational state
 

@@ -129,6 +129,28 @@ adoption — never WARN/BLOCKER. The suggestion is suppressed when the user has 
 write-on-consent rule as every other config change. On adoption, the skill ensures the file is
 gitignored (and `git rm --cached` it if already tracked), with consent.
 
+### R017 Feature reachable from the index and the nav (BLOCKER)
+
+Every directory under `docs/features/` must be reachable:
+
+- linked from `docs/features/INDEX.md` — otherwise `FEATURE_NOT_IN_INDEX`;
+- present in the `mkdocs.yml` nav — otherwise `FEATURE_NOT_IN_NAV`.
+
+R008 already validates nav → file and R013 index → canonical docs; this is the missing
+reverse direction. A feature the reader cannot find is undocumented in practice.
+
+Detection is by resolved link target, so both `[x](slug/)` and `[x](slug/README.md)` count
+(a folder link resolves to its `README.md`), as does a deep link to `flows.md`.
+
+**Nav coverage is conditional.** It is only enforced when the nav already enumerates at
+least one path under `features/`. Setups built on `mkdocs-awesome-pages` or `literate-nav`
+never list files, and flagging every feature in such a repository would be a pure false
+positive. Missing, unparseable, or unreadable `mkdocs.yml` produces no finding here — R008
+and `MKDOCS_YAML_ERROR` already report those causes.
+
+**Breaking change.** A repository that documented features without indexing them audits
+green today and turns `BLOCKER` on upgrade.
+
 ### R016 Spec written outside `docs/features/` (WARN)
 
 `docs/features/` is the single source of truth for feature behavior, so a design document
@@ -158,6 +180,7 @@ Use strict immediate alignment defaults:
 - Design document present outside `docs/features/` => `WARN`
 - Broken traceability => `BLOCKER`
 - Broken links or nav references => `BLOCKER`
+- Feature folder unreachable from `features/INDEX.md` or the nav => `BLOCKER`
 - Missing documentation map in `index.md` => `WARN`
 - Missing `docs/index.md` pointer in an AI-instruction file => `INFO`
 

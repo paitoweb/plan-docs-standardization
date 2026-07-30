@@ -428,6 +428,61 @@ def check_feature_readme(readme_path: Path, repo: Path, findings: list[Finding])
             )
 
 
+def check_feature_indexing(repo: Path, findings: list[Finding]) -> None:
+    """BLOCKER when a feature folder is unreachable from the index or the nav.
+
+    R008 validates nav -> file and R013 validates index -> canonical docs; nothing validated
+    feature -> index, so a documented feature that nobody can navigate to passed. A feature
+    the reader cannot find is, in practice, undocumented.
+    """
+
+    feature_dirs = collect_feature_dirs(repo)
+    if not feature_dirs:
+        return
+
+    index_path = repo / "docs" / "features" / "INDEX.md"
+    indexed: set[Path] = set()
+    if index_path.exists():
+        for _line_number, target in iter_markdown_links(index_path):
+            resolved = resolve_link_target(repo, index_path, target)
+            if resolved is not None:
+                indexed.add(resolved.resolve())
+
+    nav_refs = mkdocs_nav_refs(repo)
+    nav_targets = {(repo / "docs" / ref).resolve() for ref in nav_refs}
+    # Only enforce nav coverage when the nav actually enumerates features. Setups built on
+    # mkdocs-awesome-pages or literate-nav never list files, and flagging every feature in a
+    # legitimate configuration like that would be a pure false positive.
+    nav_enumerates_features = any(ref.startswith("features/") for ref in nav_refs)
+
+    for feature_dir in feature_dirs:
+        rel = str(feature_dir.relative_to(repo))
+        # A link to the folder resolves to its README.md (see resolve_link_target), so
+        # matching against the feature's markdown files covers both link styles.
+        documents = {path.resolve() for path in feature_dir.rglob("*.md")}
+
+        if not documents & indexed:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "FEATURE_NOT_IN_INDEX",
+                rel,
+                f"Feature {feature_dir.name!r} is not linked from docs/features/INDEX.md. "
+                "Add it to the feature catalog: a feature the reader cannot find is "
+                "undocumented in practice.",
+            )
+
+        if nav_enumerates_features and not documents & nav_targets:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "FEATURE_NOT_IN_NAV",
+                rel,
+                f"Feature {feature_dir.name!r} is absent from the mkdocs nav, which "
+                "enumerates other features. Add it so the published site includes it.",
+            )
+
+
 def check_specs_outside_feature_docs(repo: Path, findings: list[Finding]) -> None:
     """WARN once per excluded design-doc subtree that still holds documents.
 
@@ -687,6 +742,49 @@ def extract_nav_refs(nav_entry: Any) -> list[str]:
     return refs
 
 
+def load_mkdocs_config(mkdocs_path: Path) -> tuple[Any | None, Exception | None]:
+    """Parse mkdocs.yml, tolerating mkdocs-specific YAML tags (!ENV, !!python/name:)."""
+
+    raw_content = mkdocs_path.read_text(encoding="utf-8")
+    sanitized_content = re.sub(r"!ENV\s+", "", raw_content)
+    sanitized_content = re.sub(
+        r"!!python/name:([A-Za-z0-9_.]+)",
+        r'"\1"',
+        sanitized_content,
+    )
+
+    parse_candidates = [raw_content]
+    if sanitized_content != raw_content:
+        parse_candidates.append(sanitized_content)
+
+    parse_error: Exception | None = None
+    for candidate in parse_candidates:
+        try:
+            return yaml.safe_load(candidate), None
+        except Exception as exc:  # pragma: no cover
+            parse_error = exc
+
+    return None, parse_error
+
+
+def mkdocs_nav_refs(repo: Path) -> set[str]:
+    """Markdown paths (relative to `docs/`) enumerated in the nav; empty when unavailable.
+
+    Stays silent on absent PyYAML, missing mkdocs.yml and parse errors: check_mkdocs_nav
+    already reports each of those, and a second finding for the same cause is only noise.
+    """
+
+    mkdocs_path = repo / "mkdocs.yml"
+    if yaml is None or not mkdocs_path.exists():
+        return set()
+
+    config, parse_error = load_mkdocs_config(mkdocs_path)
+    if parse_error is not None:
+        return set()
+
+    return set(extract_nav_refs((config or {}).get("nav") or []))
+
+
 def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
     mkdocs_path = repo / "mkdocs.yml"
     if not mkdocs_path.exists():
@@ -704,27 +802,7 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
         )
         return
 
-    raw_content = mkdocs_path.read_text(encoding="utf-8")
-    sanitized_content = re.sub(r"!ENV\s+", "", raw_content)
-    sanitized_content = re.sub(
-        r"!!python/name:([A-Za-z0-9_.]+)",
-        r'"\1"',
-        sanitized_content,
-    )
-
-    parse_candidates = [raw_content]
-    if sanitized_content != raw_content:
-        parse_candidates.append(sanitized_content)
-
-    config = None
-    parse_error: Exception | None = None
-    for candidate in parse_candidates:
-        try:
-            config = yaml.safe_load(candidate)
-            parse_error = None
-            break
-        except Exception as exc:  # pragma: no cover
-            parse_error = exc
+    config, parse_error = load_mkdocs_config(mkdocs_path)
 
     if parse_error is not None:
         make_finding(
@@ -1034,6 +1112,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
             check_feature_readme(readme, repo, findings)
 
     check_feature_section_consistency(repo, findings)
+    check_feature_indexing(repo, findings)
     check_specs_outside_feature_docs(repo, findings)
 
     nfr_file = repo / "docs" / "nfr" / "NON_FUNCTIONAL.md"

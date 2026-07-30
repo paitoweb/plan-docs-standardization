@@ -46,6 +46,11 @@ Apply these defaults:
   behavior. Design/brainstorm skills are redirected there by the canonical block; a dated
   design doc under `docs/superpowers/specs/` never counts as documenting a feature.
   Implementation plans (`docs/superpowers/plans/`) are the legitimate process artifact
+- Traceability is bidirectional: besides nav/link targets resolving, every feature folder
+  must be reachable from `docs/features/INDEX.md` (`FEATURE_NOT_IN_INDEX`) and from the nav
+  (`FEATURE_NOT_IN_NAV`), both `BLOCKER`. Nav coverage is only enforced when the nav already
+  enumerates features, so file-less nav plugins are not penalized. **Breaking change** for
+  repos that documented features without indexing them
 - Alignment adds `SPEC_OUTSIDE_FEATURE_DOCS` (`WARN`, one aggregate finding) when design
   documents are still present under `docs/superpowers/specs/`; it clears when the folder is
   empty and has no acknowledgement flag by design

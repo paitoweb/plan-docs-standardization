@@ -99,6 +99,10 @@ Where:
 - Every AC-NFR heading in `docs/nfr/NON_FUNCTIONAL.md` must reference at least one `NFR-*` in the same file.
 - Internal markdown links must resolve to existing files.
 - `mkdocs.yml` nav markdown references must resolve to existing files under `docs/`.
+- Conversely, every `docs/features/<feature>/` directory must be reachable: linked from
+  `docs/features/INDEX.md` (`FEATURE_NOT_IN_INDEX`) and present in the nav
+  (`FEATURE_NOT_IN_NAV`), both `BLOCKER`. Nav coverage is only enforced when the nav already
+  enumerates features, so file-less nav plugins are not penalized.
 
 ## Non-canonical Artifacts To Ignore
 
