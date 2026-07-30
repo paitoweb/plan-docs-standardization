@@ -104,6 +104,23 @@ Where:
   (`FEATURE_NOT_IN_NAV`), both `BLOCKER`. Nav coverage is only enforced when the nav already
   enumerates features, so file-less nav plugins are not penalized.
 
+## Code-to-Docs Coverage
+
+The model's claim is that `docs/features/` describes the system's behavior. Checking only
+`docs/` cannot verify that claim: a feature can ship fully implemented and fully undocumented
+while every rule passes. Two checks read the code tree — directory *names* only, never file
+contents, so inspection stays read-only:
+
+- `FEATURE_DOC_MISSING` (`BLOCKER`) — a `feature_map` entry (`path=slug` in
+  `.docs-first/config.yml`) whose code path exists with no matching feature doc. Exact,
+  because the repository declared the mapping.
+- `FEATURE_DOC_COVERAGE_LOW` (`WARN`; `BLOCKER` only with `coverage_gate: true`) — one
+  aggregate finding comparing candidate code units against documented features. A smell
+  signal, not a measurement: candidates are directories, and a layered architecture has
+  directories per layer rather than per feature.
+
+Alignment mode only, and silent in a repository with no recognizable code root.
+
 ## Non-canonical Artifacts To Ignore
 
 - `.DS_Store`

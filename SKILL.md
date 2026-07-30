@@ -198,8 +198,27 @@ rule with `python3 scripts/render_profile_artifacts.py cursor > .cursor/rules/do
 For Claude/Codex, append the canonical block to the user's existing `CLAUDE.md`/`AGENTS.md`.
 
 **State file validation:** the audit reads `.docs-first/config.yml` when present and reports
-`DOCS_FIRST_CONFIG_INVALID` (`WARN`) for unknown profile or enforcement-gate keys. Absent file
-is never a finding.
+`DOCS_FIRST_CONFIG_INVALID` (`WARN`) for unknown profile or enforcement-gate keys, malformed
+`feature_map` entries, and a `coverage_min` outside 0–100. Absent file is never a finding.
+
+## Code-to-Docs Coverage
+
+The audit otherwise reads only `docs/`, so a feature can ship fully implemented and fully
+undocumented with everything green. Two instruments close that gap — kept apart because their
+precision differs by an order of magnitude:
+
+- **Declared map (`BLOCKER`).** `feature_map: [src/voice=voice-transcription]` maps code path
+  to slug. A mapped path present on disk with no `docs/features/<slug>/` is
+  `FEATURE_DOC_MISSING`. Flat `path=slug` strings, not nested YAML: the config parser must stay
+  trivial because the pre-commit hook and CI read it with bare `python3`.
+- **Coverage ratio (`WARN`).** `FEATURE_DOC_COVERAGE_LOW`, one aggregate finding, comparing
+  candidate code units (immediate subdirectories of `code_roots`, else conventional roots,
+  minus build/test buckets and minus mapped paths) against documented features. Threshold
+  `coverage_min` (default 50); `coverage_gate: true` promotes it to `BLOCKER`.
+
+Say so plainly when reporting the ratio: it is a **smell signal, not a measurement** — a
+layered architecture has directories per layer, not per feature. Only directory *names* are
+read, never file contents. Alignment mode only.
 
 ## Enforcement Gates
 

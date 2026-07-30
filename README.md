@@ -247,6 +247,28 @@ Tune with `code_extensions` and `diff_exempt_globs` in `.docs-first/config.yml`;
 individual change with `docs-first: skip` in a commit message. An unresolvable base is a WARN,
 never a BLOCKER.
 
+### Code-to-docs coverage
+
+`--diff` catches the moment a change lands. For code that is *already* shipped and
+undocumented, the audit reads directory names under your code roots (never file contents):
+
+```yaml
+# .docs-first/config.yml
+feature_map: [src/voice=voice-transcription, src/tree=file-tree]
+code_roots: [src, packages]     # optional; defaults to src/lib/app/apps/packages/...
+coverage_min: 50                # optional threshold for the ratio finding
+coverage_gate: false            # true promotes the ratio WARN to a BLOCKER
+```
+
+A mapped path that exists with no matching feature doc is a **BLOCKER** — you declared the
+mapping, so there is nothing to infer. Beyond the map, one aggregate **WARN** reports the
+ratio of candidate code units to documented features.
+
+That ratio is a smell signal, not a measurement: candidates are directories, and a layered
+architecture (`main/`, `renderer/`, `components/`, `hooks/`) has directories per layer, not per
+feature. It is deliberately one finding rather than one per directory — an audit that marks
+every folder teaches you to ignore it. `feature_map` is the precise instrument.
+
 ## The Docs-First cycle
 
 This skill is the starting point of a broader development method:

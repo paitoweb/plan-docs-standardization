@@ -9,6 +9,8 @@ Run checks in read-only mode over:
 - `docs/requirements-mkdocs.txt`
 - existing AI-instruction files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`)
 - `.docs-first/config.yml` when present
+- code **directory names** under the resolved code roots — existence only, never file
+  contents (R019)
 - in `--diff` mode only: the list of paths changed against the diff base, read with
   `git diff --name-only` (read-only; file contents outside `docs/` are never read)
 
@@ -132,6 +134,43 @@ adoption — never WARN/BLOCKER. The suggestion is suppressed when the user has 
 write-on-consent rule as every other config change. On adoption, the skill ensures the file is
 gitignored (and `git rm --cached` it if already tracked), with consent.
 
+### R019 Code exists, feature doc does not (BLOCKER / WARN)
+
+Two instruments with very different precision, deliberately kept apart.
+
+**Declared map (exact, `BLOCKER`).** `feature_map` in `.docs-first/config.yml` maps code path
+to feature slug. A mapped path that exists on disk with no matching `docs/features/<slug>/`
+is `FEATURE_DOC_MISSING`: the repository itself asserted that mapping, so there is nothing to
+infer. Entries are flat `path=slug` strings, not a nested mapping — the config parser must
+stay trivial because the pre-commit hook and CI read it with bare `python3`, no PyYAML.
+
+```yaml
+feature_map: [src/voice=voice-transcription, src/tree=file-tree]
+```
+
+**Coverage ratio (heuristic, `WARN`).** `FEATURE_DOC_COVERAGE_LOW`, **one aggregate finding**,
+never one per directory. Candidate code units are the immediate subdirectories of each code
+root (`code_roots`, else the first existing of `src`, `lib`, `app`, `apps`, `packages`,
+`internal`, `pkg`, `cmd`), minus build/dependency/test buckets and minus anything the declared
+map already covers. Slug matching folds naming conventions, so `voiceTranscription` matches
+`voice-transcription`.
+
+The finding message states plainly that this is a **smell signal, not a measurement**:
+candidates are directories, and a layered architecture has directories per layer, not per
+feature. Per-directory findings would mark nearly every folder in such a repo and train the
+reader to ignore the audit; the declared map is the precise instrument.
+
+`coverage_min` (default **50**) sets the threshold. That default is a heuristic, not a
+calibrated number — it exists so the rule says something in a repository that configured
+nothing, which is the case it was built for. `coverage_gate: true` promotes the finding to
+`BLOCKER`; without it the ratio never fails a gate.
+
+Alignment mode only: in bootstrap there are no docs yet, so "coverage is low" is noise. A
+repo with no recognizable code root produces no finding.
+
+Malformed `feature_map` entries and a `coverage_min` outside 0–100 are reported as
+`DOCS_FIRST_CONFIG_INVALID` (`WARN`).
+
 ### R018 Diff touches code but no feature doc (BLOCKER, opt-in via `--diff`)
 
 Only runs when `--diff [BASE]` is passed (default base `origin/main`); the plain audit is
@@ -217,6 +256,8 @@ Use strict immediate alignment defaults:
 - Feature folder unreachable from `features/INDEX.md` or the nav => `BLOCKER`
 - In `--diff` mode, code changed with no feature doc touched => `BLOCKER`; unresolvable diff
   base => `WARN`
+- Mapped code path with no feature doc => `BLOCKER`; low coverage ratio => `WARN`
+  (`BLOCKER` only when `coverage_gate: true`)
 - Missing documentation map in `index.md` => `WARN`
 - Missing `docs/index.md` pointer in an AI-instruction file => `INFO`
 
@@ -264,8 +305,15 @@ not observations. It is written only on explicit user consent; a read-only audit
 
 ### Config validity (WARN)
 
-When `.docs-first/config.yml` is present, unknown profile keys or unknown enforcement-gate keys
-are reported as `DOCS_FIRST_CONFIG_INVALID` (`WARN`). Absent file is never a finding.
+When `.docs-first/config.yml` is present, unknown profile keys, unknown enforcement-gate keys,
+malformed `feature_map` entries (not `path=slug`) and a `coverage_min` outside 0–100 are
+reported as `DOCS_FIRST_CONFIG_INVALID` (`WARN`). Absent file is never a finding.
+
+Recognized keys: `version`, `profiles`, `enforcement_chosen`, `enforcement_declined`,
+`snapshot_declined`, `diff_exempt_globs`, `code_extensions`, `feature_map`, `code_roots`,
+`coverage_gate`, `coverage_min`, `updated`. Values stay inside a flat subset of YAML
+(scalars and inline lists of bare tokens) so the gate can parse the file without PyYAML;
+this is why `feature_map` uses `path=slug` strings instead of nesting.
 
 ### Enforcement reconciliation
 

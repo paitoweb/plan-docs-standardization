@@ -25,6 +25,13 @@ class DocsFirstConfig:
     # lockfiles, generated clients), and these extensions define what "code" means.
     diff_exempt_globs: list[str] = field(default_factory=list)
     code_extensions: list[str] = field(default_factory=list)
+    # Code-to-docs coverage. feature_map entries are "path=slug" strings rather than a
+    # nested mapping: the parser below must stay trivial (see _parse_value), so a flat
+    # inline list is the only shape available.
+    feature_map: list[str] = field(default_factory=list)
+    code_roots: list[str] = field(default_factory=list)
+    coverage_gate: bool = False
+    coverage_min: int | None = None
     updated: str | None = None
     version: int = SCHEMA_VERSION
 
@@ -47,6 +54,14 @@ def render_config(cfg: DocsFirstConfig) -> str:
         lines.append(f"diff_exempt_globs: {_fmt_list(cfg.diff_exempt_globs)}")
     if cfg.code_extensions:
         lines.append(f"code_extensions: {_fmt_list(cfg.code_extensions)}")
+    if cfg.feature_map:
+        lines.append(f"feature_map: {_fmt_list(cfg.feature_map)}")
+    if cfg.code_roots:
+        lines.append(f"code_roots: {_fmt_list(cfg.code_roots)}")
+    if cfg.coverage_gate:
+        lines.append("coverage_gate: true")
+    if cfg.coverage_min is not None:
+        lines.append(f"coverage_min: {cfg.coverage_min}")
     if cfg.updated is not None:
         lines.append(f"updated: {cfg.updated}")
     return "\n".join(lines) + "\n"
@@ -87,6 +102,36 @@ def _coerce_bool(value: object, default: bool) -> bool:
     return default
 
 
+def _coerce_optional_int(value: object) -> int | None:
+    """None when the key is absent or unparseable; the caller then uses its own default."""
+
+    if value is None:
+        return None
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_feature_map(entries: list[str]) -> tuple[list[tuple[str, str]], list[str]]:
+    """Split "path=slug" entries into (pairs, malformed).
+
+    Flat "path=slug" rather than a nested mapping because _parse_value must stay trivial:
+    the pre-commit hook and CI parse this file with bare python3, no PyYAML.
+    """
+
+    pairs: list[tuple[str, str]] = []
+    malformed: list[str] = []
+    for entry in entries:
+        path, separator, slug = entry.partition("=")
+        path, slug = path.strip(), slug.strip()
+        if not separator or not path or not slug:
+            malformed.append(entry)
+            continue
+        pairs.append((path, slug))
+    return pairs, malformed
+
+
 def parse_config(text: str) -> DocsFirstConfig:
     data: dict[str, object] = {}
     for line in text.splitlines():
@@ -103,6 +148,10 @@ def parse_config(text: str) -> DocsFirstConfig:
         snapshot_declined=_coerce_bool(data.get("snapshot_declined", False), False),
         diff_exempt_globs=list(data.get("diff_exempt_globs", []) or []),
         code_extensions=list(data.get("code_extensions", []) or []),
+        feature_map=list(data.get("feature_map", []) or []),
+        code_roots=list(data.get("code_roots", []) or []),
+        coverage_gate=_coerce_bool(data.get("coverage_gate", False), False),
+        coverage_min=_coerce_optional_int(data.get("coverage_min")),
         updated=(data.get("updated") or None),
         version=_coerce_int(data.get("version", SCHEMA_VERSION), SCHEMA_VERSION),
     )

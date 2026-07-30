@@ -102,6 +102,26 @@ DEFAULT_DIFF_EXEMPT_GLOBS = (
     "*_spec.*",
 )
 
+# Where code lives, when the repo has not declared `code_roots`. Directory names, so this
+# stays stack-neutral instead of sniffing manifests per ecosystem.
+CONVENTIONAL_CODE_ROOTS = ("src", "lib", "app", "apps", "packages", "internal", "pkg", "cmd")
+
+# Directory names that are never a feature: build output, dependencies, tests, and buckets
+# that hold no domain behavior. Kept deliberately short -- names like components/ or hooks/
+# stay candidates, because in many apps they really do contain features.
+NON_FEATURE_CODE_DIRS = frozenset(
+    {
+        "__mocks__", "__tests__", "assets", "build", "coverage", "dist", "fixtures",
+        "migrations", "node_modules", "out", "spec", "styles", "target", "test", "tests",
+        "typings", "types", "vendor",
+    }
+)
+
+# Below this share of candidate code units having a matching feature doc, the aggregate
+# coverage finding fires. A heuristic default, not a calibrated number -- it exists so the
+# rule says something in a repo that configured nothing, which is the case it was built for.
+DEFAULT_COVERAGE_MIN = 50
+
 DEFAULT_CODE_EXTENSIONS = frozenset(
     {
         ".c", ".cc", ".cpp", ".cs", ".dart", ".ex", ".exs", ".go", ".h", ".hpp", ".java",
@@ -462,6 +482,119 @@ def check_feature_readme(readme_path: Path, repo: Path, findings: list[Finding])
                 f"AC heading references unknown REQ IDs: {', '.join(unknown_refs)}",
                 line=line_number,
             )
+
+
+def normalize_slug(value: str) -> str:
+    """Fold a directory name and a feature slug onto a comparable form.
+
+    `voiceTranscription`, `voice-transcription` and `voice_transcription` are the same
+    feature wearing three naming conventions.
+    """
+
+    return re.sub(r"[^a-z0-9]", "", normalize_text(value))
+
+
+def resolve_code_roots(repo: Path, declared: list[str]) -> list[Path]:
+    names = declared or CONVENTIONAL_CODE_ROOTS
+    return [repo / name for name in names if (repo / name).is_dir()]
+
+
+def candidate_code_units(repo: Path, roots: list[Path]) -> list[Path]:
+    """Immediate subdirectories of each code root that could plausibly be a feature."""
+
+    units: list[Path] = []
+    for root in roots:
+        for child in sorted(root.iterdir()):
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            if child.name.lower() in NON_FEATURE_CODE_DIRS or should_ignore_path(child):
+                continue
+            units.append(child)
+    return units
+
+
+def check_code_to_docs_coverage(repo: Path, findings: list[Finding]) -> None:
+    """Detect features that exist in code but not in docs/features/.
+
+    Two instruments with very different precision, deliberately kept apart:
+
+    - The declared `feature_map` is exact. A mapped code path that exists with no matching
+      feature doc is a BLOCKER, because the repo itself asserted that mapping.
+    - The coverage ratio is a *smell signal*, not a measurement. It compares counts of
+      things that are not strictly comparable (a layered architecture has directories per
+      layer, not per feature), so it is one aggregate WARN and never per-directory: in a
+      repo like the reported one, per-directory findings would mark nearly every folder and
+      train the reader to ignore the audit.
+
+    Alignment mode only. In bootstrap there are no docs yet, so "coverage is low" is noise.
+    """
+
+    if discover_mode(repo) != "alignment":
+        return
+
+    config = _dfc.load_config(repo)
+    documented = {normalize_slug(path.name) for path in collect_feature_dirs(repo)}
+
+    mapped_pairs: list[tuple[str, str]] = []
+    if config:
+        mapped_pairs, _malformed = _dfc.parse_feature_map(config.feature_map)
+
+    for code_path, slug in mapped_pairs:
+        target = repo / code_path
+        if not target.exists():
+            continue
+        if normalize_slug(slug) not in documented:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "FEATURE_DOC_MISSING",
+                code_path,
+                f"{code_path} is mapped to feature {slug!r} in .docs-first/config.yml, but "
+                f"docs/features/{slug}/ does not exist. The code ships behavior that no "
+                "feature doc describes.",
+            )
+
+    roots = resolve_code_roots(repo, config.code_roots if config else [])
+    if not roots:
+        return
+
+    mapped_units = {(repo / code_path).resolve() for code_path, _slug in mapped_pairs}
+    # Skip what the map already covers: the heuristic exists to survey unmapped territory,
+    # not to second-guess the precise instrument.
+    candidates = [
+        unit
+        for unit in candidate_code_units(repo, roots)
+        if unit.resolve() not in mapped_units
+    ]
+    if not candidates:
+        return
+
+    covered = [unit for unit in candidates if normalize_slug(unit.name) in documented]
+    coverage = len(covered) * 100 // len(candidates)
+
+    minimum = DEFAULT_COVERAGE_MIN
+    if config and config.coverage_min is not None:
+        minimum = config.coverage_min
+    if coverage >= minimum:
+        return
+
+    orphans = [unit.relative_to(repo).as_posix() for unit in candidates if unit not in covered]
+    listed = ", ".join(orphans[:5])
+    if len(orphans) > 5:
+        listed += f", +{len(orphans) - 5} more"
+
+    severity = "BLOCKER" if config and config.coverage_gate else "WARN"
+    make_finding(
+        findings,
+        severity,
+        "FEATURE_DOC_COVERAGE_LOW",
+        "docs/features",
+        f"{len(covered)} of {len(candidates)} candidate code units have a matching feature "
+        f"doc ({coverage}%, below {minimum}%). This is a smell signal, not a measurement: "
+        "candidates are directories, which in a layered architecture do not map 1:1 to "
+        "features. For an exact check, declare feature_map in .docs-first/config.yml. "
+        f"Unmatched: {listed}.",
+    )
 
 
 def git_output(repo: Path, args: list[str]) -> str | None:
@@ -1140,12 +1273,24 @@ def check_agent_profiles_config(repo: Path, findings: list[Finding]) -> None:
         for g in (config.enforcement_chosen + config.enforcement_declined)
         if g not in KNOWN_ENFORCEMENT_GATES
     ]
-    if unknown_profiles or unknown_gates:
+    _pairs, malformed_map = _dfc.parse_feature_map(config.feature_map)
+    bad_coverage_min = (
+        config.coverage_min is not None and not 0 <= config.coverage_min <= 100
+    )
+
+    if unknown_profiles or unknown_gates or malformed_map or bad_coverage_min:
         details = []
         if unknown_profiles:
             details.append(f"unknown profiles {sorted(set(unknown_profiles))}")
         if unknown_gates:
             details.append(f"unknown enforcement gates {sorted(set(unknown_gates))}")
+        if malformed_map:
+            details.append(
+                f"malformed feature_map entries {sorted(set(malformed_map))} "
+                "(expected 'code/path=feature-slug')"
+            )
+        if bad_coverage_min:
+            details.append(f"coverage_min {config.coverage_min} outside 0-100")
         make_finding(
             findings,
             "WARN",
@@ -1257,6 +1402,7 @@ def audit_repository(repo: Path, diff_base: str | None = None) -> dict[str, Any]
 
     check_feature_section_consistency(repo, findings)
     check_feature_indexing(repo, findings)
+    check_code_to_docs_coverage(repo, findings)
     check_specs_outside_feature_docs(repo, findings)
 
     nfr_file = repo / "docs" / "nfr" / "NON_FUNCTIONAL.md"
