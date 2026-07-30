@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
+import subprocess
 import sys
 import unicodedata
 from dataclasses import asdict, dataclass
@@ -70,8 +72,76 @@ CANONICAL_GUIDELINES_REL = "assets/templates/ai-instructions/guidelines.en.md"
 
 AI_INSTRUCTION_MAP_HEADING = "## Documentation Map"
 
+# The path the workflow must route feature work through. A literal path, so requiring it
+# keeps the content check language-agnostic.
+FEATURE_DOCS_REF = "docs/features/"
+
+DEFAULT_DIFF_BASE = "origin/main"
+
+# Marks a claim in a feature doc that has not yet been read against the implementation.
+# Same `docs-first:` token family as the --diff escape hatch; deliberately not bracketed,
+# since a [bracketed] token reads as a markdown link and as a template placeholder.
+UNVERIFIED_MARKER = "docs-first:unverified"
+
+# Opt-out marker, honored anywhere in the range's commit messages: some changes legitimately
+# touch code without touching a feature doc (refactors, chores, build config).
+DIFF_SKIP_MARKER = "docs-first: skip"
+
+# What counts as "code" in --diff mode. An extension allowlist, not "everything that is not
+# a doc": the latter flags a lockfile bump or a CI tweak as feature work, and a rule that
+# cries wolf on every chore is a rule people turn off. Extend per repo with
+# `code_extensions` in .docs-first/config.yml.
+# Test paths are exempt by default. A test-only change ships no behavior, so flagging it
+# would be a false positive; and nothing is lost, because a feature that ships code *and*
+# tests is still caught by its code files. Config globs extend this set, never replace it.
+DEFAULT_DIFF_EXEMPT_GLOBS = (
+    "tests/*",
+    "test/*",
+    "spec/*",
+    "*/tests/*",
+    "*/test/*",
+    "*/__tests__/*",
+    "*.test.*",
+    "*.spec.*",
+    "*_test.*",
+    "*_spec.*",
+)
+
+# Where code lives, when the repo has not declared `code_roots`. Directory names, so this
+# stays stack-neutral instead of sniffing manifests per ecosystem.
+CONVENTIONAL_CODE_ROOTS = ("src", "lib", "app", "apps", "packages", "internal", "pkg", "cmd")
+
+# Directory names that are never a feature: build output, dependencies, tests, and buckets
+# that hold no domain behavior. Kept deliberately short -- names like components/ or hooks/
+# stay candidates, because in many apps they really do contain features.
+NON_FEATURE_CODE_DIRS = frozenset(
+    {
+        "__mocks__", "__tests__", "assets", "build", "coverage", "dist", "fixtures",
+        "migrations", "node_modules", "out", "spec", "styles", "target", "test", "tests",
+        "typings", "types", "vendor",
+    }
+)
+
+# Below this share of candidate code units having a matching feature doc, the aggregate
+# coverage finding fires. A heuristic default, not a calibrated number -- it exists so the
+# rule says something in a repo that configured nothing, which is the case it was built for.
+DEFAULT_COVERAGE_MIN = 50
+
+DEFAULT_CODE_EXTENSIONS = frozenset(
+    {
+        ".c", ".cc", ".cpp", ".cs", ".dart", ".ex", ".exs", ".go", ".h", ".hpp", ".java",
+        ".js", ".jsx", ".kt", ".kts", ".m", ".mm", ".php", ".py", ".rb", ".rs", ".scala",
+        ".sql", ".svelte", ".swift", ".ts", ".tsx", ".vue",
+    }
+)
+
 IGNORED_FILE_NAMES = {".DS_Store"}
 IGNORED_PATH_PARTS = {".obsidian", "__pycache__"}
+
+# Design-doc artifacts produced by tooling sit outside the model: docs/features/ is the
+# single source of truth for feature behavior. A dated design doc is abandoned by
+# definition, so the subtree is excluded entirely — its stale links must not fail the gate.
+IGNORED_DOCS_SUBTREES = ("docs/superpowers/specs",)
 
 REQ_ID_RE = re.compile(r"\bREQ-[A-Z0-9-]+-\d{3}\b")
 AC_ID_RE = re.compile(r"\bAC-[A-Z0-9-]+-\d{3}\b")
@@ -262,6 +332,18 @@ def should_ignore_path(path: Path) -> bool:
     return any(part in IGNORED_PATH_PARTS for part in path.parts) or path.name in IGNORED_FILE_NAMES
 
 
+def is_ignored_docs_subtree(path: Path, repo: Path) -> bool:
+    """True when path lives in a docs subtree the model excludes (design-doc artifacts)."""
+
+    try:
+        rel = path.resolve().relative_to(repo.resolve()).as_posix()
+    except ValueError:
+        return False
+    return any(
+        rel == prefix or rel.startswith(prefix + "/") for prefix in IGNORED_DOCS_SUBTREES
+    )
+
+
 def iter_code_span_tokens(text: str) -> Iterable[str]:
     for token in CODE_SPAN_RE.findall(text):
         candidate = token.strip()
@@ -405,6 +487,368 @@ def check_feature_readme(readme_path: Path, repo: Path, findings: list[Finding])
                 f"AC heading references unknown REQ IDs: {', '.join(unknown_refs)}",
                 line=line_number,
             )
+
+
+def normalize_slug(value: str) -> str:
+    """Fold a directory name and a feature slug onto a comparable form.
+
+    `voiceTranscription`, `voice-transcription` and `voice_transcription` are the same
+    feature wearing three naming conventions.
+    """
+
+    return re.sub(r"[^a-z0-9]", "", normalize_text(value))
+
+
+def resolve_code_roots(repo: Path, declared: list[str]) -> list[Path]:
+    names = declared or CONVENTIONAL_CODE_ROOTS
+    return [repo / name for name in names if (repo / name).is_dir()]
+
+
+def candidate_code_units(repo: Path, roots: list[Path]) -> list[Path]:
+    """Immediate subdirectories of each code root that could plausibly be a feature."""
+
+    units: list[Path] = []
+    for root in roots:
+        for child in sorted(root.iterdir()):
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            if child.name.lower() in NON_FEATURE_CODE_DIRS or should_ignore_path(child):
+                continue
+            units.append(child)
+    return units
+
+
+def check_code_to_docs_coverage(repo: Path, findings: list[Finding]) -> None:
+    """Detect features that exist in code but not in docs/features/.
+
+    Two instruments with very different precision, deliberately kept apart:
+
+    - The declared `feature_map` is exact. A mapped code path that exists with no matching
+      feature doc is a BLOCKER, because the repo itself asserted that mapping.
+    - The coverage ratio is a *smell signal*, not a measurement. It compares counts of
+      things that are not strictly comparable (a layered architecture has directories per
+      layer, not per feature), so it is one aggregate WARN and never per-directory: in a
+      repo like the reported one, per-directory findings would mark nearly every folder and
+      train the reader to ignore the audit.
+
+    Alignment mode only. In bootstrap there are no docs yet, so "coverage is low" is noise.
+    """
+
+    if discover_mode(repo) != "alignment":
+        return
+
+    config = _dfc.load_config(repo)
+    documented = {normalize_slug(path.name) for path in collect_feature_dirs(repo)}
+
+    mapped_pairs: list[tuple[str, str]] = []
+    if config:
+        mapped_pairs, _malformed = _dfc.parse_feature_map(config.feature_map)
+
+    for code_path, slug in mapped_pairs:
+        target = repo / code_path
+        if not target.exists():
+            continue
+        if normalize_slug(slug) not in documented:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "FEATURE_DOC_MISSING",
+                code_path,
+                f"{code_path} is mapped to feature {slug!r} in .docs-first/config.yml, but "
+                f"docs/features/{slug}/ does not exist. The code ships behavior that no "
+                "feature doc describes.",
+            )
+
+    roots = resolve_code_roots(repo, config.code_roots if config else [])
+    if not roots:
+        return
+
+    mapped_units = {(repo / code_path).resolve() for code_path, _slug in mapped_pairs}
+    # Skip what the map already covers: the heuristic exists to survey unmapped territory,
+    # not to second-guess the precise instrument.
+    candidates = [
+        unit
+        for unit in candidate_code_units(repo, roots)
+        if unit.resolve() not in mapped_units
+    ]
+    if not candidates:
+        return
+
+    covered = [unit for unit in candidates if normalize_slug(unit.name) in documented]
+    coverage = len(covered) * 100 // len(candidates)
+
+    minimum = DEFAULT_COVERAGE_MIN
+    if config and config.coverage_min is not None:
+        minimum = config.coverage_min
+    if coverage >= minimum:
+        return
+
+    orphans = [unit.relative_to(repo).as_posix() for unit in candidates if unit not in covered]
+    listed = ", ".join(orphans[:5])
+    if len(orphans) > 5:
+        listed += f", +{len(orphans) - 5} more"
+
+    severity = "BLOCKER" if config and config.coverage_gate else "WARN"
+    make_finding(
+        findings,
+        severity,
+        "FEATURE_DOC_COVERAGE_LOW",
+        "docs/features",
+        f"{len(covered)} of {len(candidates)} candidate code units have a matching feature "
+        f"doc ({coverage}%, below {minimum}%). This is a smell signal, not a measurement: "
+        "candidates are directories, which in a layered architecture do not map 1:1 to "
+        "features. For an exact check, declare feature_map in .docs-first/config.yml. "
+        f"Unmatched: {listed}.",
+    )
+
+
+def git_output(repo: Path, args: list[str]) -> str | None:
+    """Run a read-only git command; None when git fails or is unavailable.
+
+    Read-only by construction, so this does not breach the planning-only guardrail.
+    """
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError):  # pragma: no cover - git absent from PATH
+        return None
+
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def is_code_path(path: str, extensions: set[str], exempt_globs: list[str]) -> bool:
+    if any(fnmatch.fnmatch(path, pattern) for pattern in exempt_globs):
+        return False
+    return Path(path).suffix.lower() in extensions
+
+
+def check_diff_feature_docs(repo: Path, findings: list[Finding], base: str) -> None:
+    """BLOCKER when a diff touches code but no feature doc. Only runs with --diff.
+
+    Cheap PR-time enforcement: the audit is otherwise blind to code, so a feature can ship
+    fully implemented and fully undocumented while every rule passes. This does not attempt
+    to decide *which* feature doc was owed -- only that shipping code while touching no
+    feature doc at all is a gap worth stopping.
+
+    An unresolvable base or an unavailable git is a WARN, never a BLOCKER: failing someone's
+    pipeline because a ref is missing punishes the wrong mistake.
+    """
+
+    config = _dfc.load_config(repo)
+    exempt_globs = list(DEFAULT_DIFF_EXEMPT_GLOBS)
+    if config:
+        exempt_globs.extend(config.diff_exempt_globs)
+    extensions = {ext.lower() for ext in (config.code_extensions if config else [])}
+    if not extensions:
+        extensions = set(DEFAULT_CODE_EXTENSIONS)
+
+    if git_output(repo, ["rev-parse", "--verify", base]) is None:
+        make_finding(
+            findings,
+            "WARN",
+            "DIFF_BASE_UNRESOLVED",
+            base,
+            f"Cannot resolve diff base {base!r} (or git is unavailable), so the "
+            "code-without-feature-doc check was skipped. Pass an existing ref via "
+            "--diff <ref>.",
+        )
+        return
+
+    # Three-dot: changes on this branch since it diverged from base, which is what a PR
+    # actually contributes -- not everything that landed on base meanwhile.
+    names = git_output(repo, ["diff", "--name-only", f"{base}...HEAD"])
+    if names is None:
+        make_finding(
+            findings,
+            "WARN",
+            "DIFF_BASE_UNRESOLVED",
+            base,
+            f"git diff against {base!r} failed, so the code-without-feature-doc check "
+            "was skipped.",
+        )
+        return
+
+    changed = [line.strip() for line in names.splitlines() if line.strip()]
+    if not changed:
+        return
+
+    # Honored anywhere in the range, not just HEAD: in CI HEAD is often a merge commit whose
+    # message nobody wrote.
+    commit_messages = git_output(repo, ["log", "--pretty=%B", f"{base}...HEAD"]) or ""
+    if DIFF_SKIP_MARKER in commit_messages:
+        return
+
+    if any(path.startswith(FEATURE_DOCS_REF) for path in changed):
+        return
+
+    code_paths = sorted(
+        path for path in changed if is_code_path(path, extensions, exempt_globs)
+    )
+    if not code_paths:
+        return
+
+    listed = ", ".join(code_paths[:5])
+    if len(code_paths) > 5:
+        listed += f", +{len(code_paths) - 5} more"
+
+    make_finding(
+        findings,
+        "BLOCKER",
+        "DIFF_CODE_WITHOUT_FEATURE_DOC",
+        FEATURE_DOCS_REF,
+        f"{len(code_paths)} code file(s) changed against {base} with no change under "
+        f"docs/features/: {listed}. Document the behavior in the feature doc, or mark the "
+        f"change exempt with '{DIFF_SKIP_MARKER}' in a commit message (refactors, chores, "
+        "build config) or via diff_exempt_globs in .docs-first/config.yml.",
+    )
+
+
+def check_feature_indexing(repo: Path, findings: list[Finding]) -> None:
+    """BLOCKER when a feature folder is unreachable from the index or the nav.
+
+    R008 validates nav -> file and R013 validates index -> canonical docs; nothing validated
+    feature -> index, so a documented feature that nobody can navigate to passed. A feature
+    the reader cannot find is, in practice, undocumented.
+    """
+
+    feature_dirs = collect_feature_dirs(repo)
+    if not feature_dirs:
+        return
+
+    index_path = repo / "docs" / "features" / "INDEX.md"
+    indexed: set[Path] = set()
+    if index_path.exists():
+        for _line_number, target in iter_markdown_links(index_path):
+            resolved = resolve_link_target(repo, index_path, target)
+            if resolved is not None:
+                indexed.add(resolved.resolve())
+
+    nav_refs = mkdocs_nav_refs(repo)
+    nav_targets = {(repo / "docs" / ref).resolve() for ref in nav_refs}
+    # Only enforce nav coverage when the nav actually enumerates features. Setups built on
+    # mkdocs-awesome-pages or literate-nav never list files, and flagging every feature in a
+    # legitimate configuration like that would be a pure false positive.
+    nav_enumerates_features = any(ref.startswith("features/") for ref in nav_refs)
+
+    for feature_dir in feature_dirs:
+        rel = str(feature_dir.relative_to(repo))
+        # A link to the folder resolves to its README.md (see resolve_link_target), so
+        # matching against the feature's markdown files covers both link styles.
+        documents = {path.resolve() for path in feature_dir.rglob("*.md")}
+
+        if not documents & indexed:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "FEATURE_NOT_IN_INDEX",
+                rel,
+                f"Feature {feature_dir.name!r} is not linked from docs/features/INDEX.md. "
+                "Add it to the feature catalog: a feature the reader cannot find is "
+                "undocumented in practice.",
+            )
+
+        if nav_enumerates_features and not documents & nav_targets:
+            make_finding(
+                findings,
+                "BLOCKER",
+                "FEATURE_NOT_IN_NAV",
+                rel,
+                f"Feature {feature_dir.name!r} is absent from the mkdocs nav, which "
+                "enumerates other features. Add it so the published site includes it.",
+            )
+
+
+def spec_to_candidate_slug(spec_filename: str) -> str:
+    """Candidate feature slug for a legacy design-doc filename.
+
+    `2026-06-09-voice-transcription-design.md` -> `voice-transcription`. A *candidate*: the
+    filename suggests what the feature might be called, nothing more.
+    """
+
+    stem = re.sub(r"\.md$", "", spec_filename)
+    stem = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", stem)
+    stem = re.sub(r"-design$", "", stem)
+    return stem
+
+
+def check_unverified_claims(repo: Path, findings: list[Finding]) -> None:
+    """WARN per feature whose doc still carries claims not read against the code.
+
+    Migrating a legacy design doc must not launder stale content into the source of truth:
+    a dated spec drifts from the implementation, so every claim copied out of one is a
+    hypothesis until confirmed. The marker records that state; this rule keeps it tracked,
+    so it cannot age quietly into truth -- which is precisely how the design doc came to
+    lie in the first place.
+
+    WARN, never BLOCKER: blocking would force whole-feature verification before anything
+    can land, making incremental migration impossible.
+    """
+
+    for feature_dir in collect_feature_dirs(repo):
+        occurrences = 0
+        for path in sorted(feature_dir.rglob("*.md")):
+            if should_ignore_path(path):
+                continue
+            occurrences += path.read_text(encoding="utf-8").count(UNVERIFIED_MARKER)
+
+        if not occurrences:
+            continue
+
+        make_finding(
+            findings,
+            "WARN",
+            "FEATURE_DOC_UNVERIFIED",
+            str(feature_dir.relative_to(repo)),
+            f"{occurrences} claim(s) marked '{UNVERIFIED_MARKER}' in this feature doc have "
+            "not been read against the implementation. Confirm each against the code and "
+            "remove the marker; until then this doc is a hypothesis, not the source of "
+            "truth.",
+        )
+
+
+def check_specs_outside_feature_docs(repo: Path, findings: list[Finding]) -> None:
+    """WARN once per excluded design-doc subtree that still holds documents.
+
+    docs/features/ is the single source of truth, so a design doc here is either
+    pre-adoption legacy or an agent that ignored the redirect in the canonical block.
+    Reported as one aggregate finding per subtree: a legacy repo can hold dozens, and the
+    resolution is identical for all of them (migrate what is still true, delete the rest),
+    so one finding per file would only drown the rest of the audit.
+    """
+
+    for prefix in IGNORED_DOCS_SUBTREES:
+        subtree = repo / prefix
+        if not subtree.is_dir():
+            continue
+
+        documents = sorted(
+            path for path in subtree.rglob("*.md") if not should_ignore_path(path)
+        )
+        if not documents:
+            continue
+
+        names = [path.relative_to(subtree).as_posix() for path in documents[:5]]
+        listed = ", ".join(names)
+        if len(documents) > len(names):
+            listed += f", +{len(documents) - len(names)} more"
+
+        make_finding(
+            findings,
+            "WARN",
+            "SPEC_OUTSIDE_FEATURE_DOCS",
+            prefix,
+            f"{len(documents)} design document(s) under {prefix}/. The spec belongs in "
+            "docs/features/<feature>/ (the single source of truth for feature behavior). "
+            "Migrate what is still true into the feature docs and remove the rest: "
+            f"{listed}.",
+        )
 
 
 def check_nfr_file(nfr_path: Path, repo: Path, findings: list[Finding]) -> None:
@@ -556,7 +1000,7 @@ def check_markdown_links(repo: Path, findings: list[Finding]) -> None:
         return
 
     for md_file in sorted(docs_dir.rglob("*.md")):
-        if should_ignore_path(md_file):
+        if should_ignore_path(md_file) or is_ignored_docs_subtree(md_file, repo):
             continue
         rel = str(md_file.relative_to(repo))
 
@@ -628,6 +1072,49 @@ def extract_nav_refs(nav_entry: Any) -> list[str]:
     return refs
 
 
+def load_mkdocs_config(mkdocs_path: Path) -> tuple[Any | None, Exception | None]:
+    """Parse mkdocs.yml, tolerating mkdocs-specific YAML tags (!ENV, !!python/name:)."""
+
+    raw_content = mkdocs_path.read_text(encoding="utf-8")
+    sanitized_content = re.sub(r"!ENV\s+", "", raw_content)
+    sanitized_content = re.sub(
+        r"!!python/name:([A-Za-z0-9_.]+)",
+        r'"\1"',
+        sanitized_content,
+    )
+
+    parse_candidates = [raw_content]
+    if sanitized_content != raw_content:
+        parse_candidates.append(sanitized_content)
+
+    parse_error: Exception | None = None
+    for candidate in parse_candidates:
+        try:
+            return yaml.safe_load(candidate), None
+        except Exception as exc:  # pragma: no cover
+            parse_error = exc
+
+    return None, parse_error
+
+
+def mkdocs_nav_refs(repo: Path) -> set[str]:
+    """Markdown paths (relative to `docs/`) enumerated in the nav; empty when unavailable.
+
+    Stays silent on absent PyYAML, missing mkdocs.yml and parse errors: check_mkdocs_nav
+    already reports each of those, and a second finding for the same cause is only noise.
+    """
+
+    mkdocs_path = repo / "mkdocs.yml"
+    if yaml is None or not mkdocs_path.exists():
+        return set()
+
+    config, parse_error = load_mkdocs_config(mkdocs_path)
+    if parse_error is not None:
+        return set()
+
+    return set(extract_nav_refs((config or {}).get("nav") or []))
+
+
 def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
     mkdocs_path = repo / "mkdocs.yml"
     if not mkdocs_path.exists():
@@ -645,27 +1132,7 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
         )
         return
 
-    raw_content = mkdocs_path.read_text(encoding="utf-8")
-    sanitized_content = re.sub(r"!ENV\s+", "", raw_content)
-    sanitized_content = re.sub(
-        r"!!python/name:([A-Za-z0-9_.]+)",
-        r'"\1"',
-        sanitized_content,
-    )
-
-    parse_candidates = [raw_content]
-    if sanitized_content != raw_content:
-        parse_candidates.append(sanitized_content)
-
-    config = None
-    parse_error: Exception | None = None
-    for candidate in parse_candidates:
-        try:
-            config = yaml.safe_load(candidate)
-            parse_error = None
-            break
-        except Exception as exc:  # pragma: no cover
-            parse_error = exc
+    config, parse_error = load_mkdocs_config(mkdocs_path)
 
     if parse_error is not None:
         make_finding(
@@ -700,14 +1167,14 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
             )
 
 
-def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
-    """Detect (has_workflow, has_principles) by structure, independent of language.
+def _shape_indexes(sections: list[list[str]]) -> tuple[int | None, int | None]:
+    """(workflow_index, principles_index) over level-2 sections.
 
-    Workflow = a level-2 section with >=3 ordered-list items.
-    Principles = a *different* level-2 section with >=3 bullet items.
+    Single definition of "which section is the workflow", shared by the shape check and the
+    content check below — if the two disagreed, we would demand a `docs/features/` reference
+    from a section that is not the workflow.
     """
 
-    sections = iter_level2_sections(text)
     ordered_indexes = [
         index
         for index, section in enumerate(sections)
@@ -723,7 +1190,42 @@ def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
     principles_index = next(
         (index for index in bullet_indexes if index != workflow_index), None
     )
+    return workflow_index, principles_index
+
+
+def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
+    """Detect (has_workflow, has_principles) by structure, independent of language.
+
+    Workflow = a level-2 section with >=3 ordered-list items.
+    Principles = a *different* level-2 section with >=3 bullet items.
+    """
+
+    workflow_index, principles_index = _shape_indexes(iter_level2_sections(text))
     return workflow_index is not None, principles_index is not None
+
+
+def workflow_section_text(text: str) -> str | None:
+    """The detected workflow section, or None when the file has no such shape."""
+
+    sections = iter_level2_sections(text)
+    workflow_index, _principles_index = _shape_indexes(sections)
+    if workflow_index is None:
+        return None
+    return "\n".join(sections[workflow_index])
+
+
+def workflow_routes_through_feature_docs(text: str) -> bool:
+    """True when the workflow section references docs/features/.
+
+    Content check that stays language-agnostic: `docs/features/` is a literal path, not
+    natural language, so this works on localized guidelines — the same trick R014 uses with
+    resolved link targets. Structure alone is not enough: any numbered list of three steps
+    satisfies the shape check, so a release ritual can pass with no mention of documenting
+    anything.
+    """
+
+    section = workflow_section_text(text)
+    return section is not None and FEATURE_DOCS_REF in section
 
 
 def references_doc_index(path: Path, repo: Path) -> bool:
@@ -763,9 +1265,8 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
             )
             continue
 
-        has_workflow, has_principles = detect_ai_instruction_shapes(
-            path.read_text(encoding="utf-8")
-        )
+        text = path.read_text(encoding="utf-8")
+        has_workflow, has_principles = detect_ai_instruction_shapes(text)
         if not has_workflow:
             make_finding(
                 findings,
@@ -783,6 +1284,21 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
                 rel,
                 "AI instruction file missing a principles section "
                 "(a heading followed by a bulleted list).",
+            )
+
+        # Only when the shape exists: a missing workflow section is already reported above,
+        # and demanding a reference from a section that is absent would double-report it.
+        if has_workflow and not workflow_routes_through_feature_docs(text):
+            make_finding(
+                findings,
+                "BLOCKER",
+                "AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED",
+                rel,
+                "Workflow section does not reference docs/features/. The workflow must "
+                "route feature work through the feature doc (docs/features/<feature>/), "
+                "which is the spec. Without this, any numbered list of three steps "
+                "satisfies the structural check while saying nothing about documenting "
+                "features.",
             )
 
         if not references_doc_index(path, repo):
@@ -810,12 +1326,24 @@ def check_agent_profiles_config(repo: Path, findings: list[Finding]) -> None:
         for g in (config.enforcement_chosen + config.enforcement_declined)
         if g not in KNOWN_ENFORCEMENT_GATES
     ]
-    if unknown_profiles or unknown_gates:
+    _pairs, malformed_map = _dfc.parse_feature_map(config.feature_map)
+    bad_coverage_min = (
+        config.coverage_min is not None and not 0 <= config.coverage_min <= 100
+    )
+
+    if unknown_profiles or unknown_gates or malformed_map or bad_coverage_min:
         details = []
         if unknown_profiles:
             details.append(f"unknown profiles {sorted(set(unknown_profiles))}")
         if unknown_gates:
             details.append(f"unknown enforcement gates {sorted(set(unknown_gates))}")
+        if malformed_map:
+            details.append(
+                f"malformed feature_map entries {sorted(set(malformed_map))} "
+                "(expected 'code/path=feature-slug')"
+            )
+        if bad_coverage_min:
+            details.append(f"coverage_min {config.coverage_min} outside 0-100")
         make_finding(
             findings,
             "WARN",
@@ -910,7 +1438,7 @@ def sort_findings(findings: list[Finding]) -> list[Finding]:
     return sorted(findings, key=key)
 
 
-def audit_repository(repo: Path) -> dict[str, Any]:
+def audit_repository(repo: Path, diff_base: str | None = None) -> dict[str, Any]:
     repo = repo.resolve()
     findings: list[Finding] = []
 
@@ -926,6 +1454,10 @@ def audit_repository(repo: Path) -> dict[str, Any]:
             check_feature_readme(readme, repo, findings)
 
     check_feature_section_consistency(repo, findings)
+    check_feature_indexing(repo, findings)
+    check_code_to_docs_coverage(repo, findings)
+    check_unverified_claims(repo, findings)
+    check_specs_outside_feature_docs(repo, findings)
 
     nfr_file = repo / "docs" / "nfr" / "NON_FUNCTIONAL.md"
     check_nfr_file(nfr_file, repo, findings)
@@ -936,6 +1468,9 @@ def audit_repository(repo: Path) -> dict[str, Any]:
     check_agent_profiles_config(repo, findings)
     check_enforcement_gates(repo, findings)
     check_current_state_suggestion(repo, findings)
+
+    if diff_base is not None:
+        check_diff_feature_docs(repo, findings, diff_base)
 
     sorted_findings = sort_findings(findings)
     summary = summarize(sorted_findings)
@@ -991,6 +1526,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default="markdown",
         help="Output format",
     )
+    parser.add_argument(
+        "--diff",
+        nargs="?",
+        const=DEFAULT_DIFF_BASE,
+        default=None,
+        metavar="BASE",
+        dest="diff_base",
+        help=(
+            "Also fail when the diff against BASE "
+            f"(default {DEFAULT_DIFF_BASE}) touches code but no feature doc. "
+            "Intended for PR CI."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -998,7 +1546,7 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     repo = Path(args.repo)
 
-    result = audit_repository(repo)
+    result = audit_repository(repo, diff_base=args.diff_base)
 
     if args.format == "json":
         print(json.dumps(result, indent=2, ensure_ascii=False))

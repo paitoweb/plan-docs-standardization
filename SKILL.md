@@ -40,7 +40,20 @@ Apply these defaults:
 - Language: `en`
 - Required feature files: `README.md`, `flows.md`, `rules.md`, `notes.md`
 - Required root docs include `docs/reports/README.md`, `mkdocs.yml`, and `docs/requirements-mkdocs.txt`
-- Ignore non-canonical artifacts: `.DS_Store`, `.obsidian`, editor/system files
+- Ignore non-canonical artifacts: `.DS_Store`, `.obsidian`, editor/system files, and the
+  `docs/superpowers/specs/` subtree (design-doc artifacts, outside the model)
+- `docs/features/<feature>/` **is** the spec — the single source of truth for feature
+  behavior. Design/brainstorm skills are redirected there by the canonical block; a dated
+  design doc under `docs/superpowers/specs/` never counts as documenting a feature.
+  Implementation plans (`docs/superpowers/plans/`) are the legitimate process artifact
+- Traceability is bidirectional: besides nav/link targets resolving, every feature folder
+  must be reachable from `docs/features/INDEX.md` (`FEATURE_NOT_IN_INDEX`) and from the nav
+  (`FEATURE_NOT_IN_NAV`), both `BLOCKER`. Nav coverage is only enforced when the nav already
+  enumerates features, so file-less nav plugins are not penalized. **Breaking change** for
+  repos that documented features without indexing them
+- Alignment adds `SPEC_OUTSIDE_FEATURE_DOCS` (`WARN`, one aggregate finding) when design
+  documents are still present under `docs/superpowers/specs/`; it clears when the folder is
+  empty and has no acknowledgement flag by design
 - AI instruction files are optional and never created; only existing ones are audited and proposed for alignment
 - Alignment is language-agnostic: feature-section expectations are inferred by strict majority of the project's own feature docs (`WARN`), and AI-instruction sections are detected structurally (`BLOCKER`); bundled templates and bootstrap stay English
 - `docs/index.md` is a navigational ownership map (what each doc/folder is for and what must not go in it); operational session-state (branch/PR/deploy) is not design truth and lives in git/PRs or the optional `docs/reports/CURRENT_STATE.md` snapshot — never in ROADMAP/BACKLOG/DECISIONS
@@ -87,6 +100,21 @@ python3 scripts/audit_docs_model.py <repo-path> --format json
 python3 scripts/audit_docs_model.py <repo-path> --format markdown
 ```
 
+PR-time code↔docs check (opt-in; the plain audit is unchanged):
+
+```bash
+python3 scripts/audit_docs_model.py <repo-path> --diff              # base origin/main
+python3 scripts/audit_docs_model.py <repo-path> --diff upstream/dev
+```
+
+Fails (`DIFF_CODE_WITHOUT_FEATURE_DOC`, `BLOCKER`) when the diff changes code and nothing
+under `docs/features/`. Test paths are exempt by default; extend with `diff_exempt_globs`
+and redefine what code means with `code_extensions` in `.docs-first/config.yml`. Escape
+hatch for refactors/chores: `docs-first: skip` in any commit message of the range. An
+unresolvable base is a `WARN`, never a `BLOCKER`. To use it in the `ci` gate, pass the flag
+in `audit_cmd`; the generated workflow already sets `fetch-depth: 0` so `origin/main`
+resolves.
+
 ### 2) Build alignment plan (read-only)
 
 ```bash
@@ -132,6 +160,12 @@ Optionally align existing AI instruction files to the canonical guidelines block
   section (bulleted list) structurally, independent of language. Missing either is a
   `BLOCKER`; the proposed diff appends the English canonical block as a starting point to
   translate. Never apply changes.
+- One content requirement on top of shape: the workflow section must reference
+  `docs/features/` (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`, `BLOCKER`). Still
+  language-agnostic — the path is a literal, so a localized workflow passes by citing it.
+  Shape alone lets any numbered list of three steps (a release ritual, say) pass while never
+  telling the agent to document a feature. **Breaking change:** a repo whose file never
+  received the canonical block audits green today and blocks on upgrade.
 
 ## Agent Profiles
 
@@ -164,8 +198,44 @@ rule with `python3 scripts/render_profile_artifacts.py cursor > .cursor/rules/do
 For Claude/Codex, append the canonical block to the user's existing `CLAUDE.md`/`AGENTS.md`.
 
 **State file validation:** the audit reads `.docs-first/config.yml` when present and reports
-`DOCS_FIRST_CONFIG_INVALID` (`WARN`) for unknown profile or enforcement-gate keys. Absent file
-is never a finding.
+`DOCS_FIRST_CONFIG_INVALID` (`WARN`) for unknown profile or enforcement-gate keys, malformed
+`feature_map` entries, and a `coverage_min` outside 0–100. Absent file is never a finding.
+
+## Legacy Spec Migration
+
+When a repository has design docs under `docs/superpowers/specs/` with no feature doc, the
+plan emits a `Legacy Spec Migration` subsection: one row per design doc, a candidate slug, and
+the four target files — **structure only, all deferred**, never a create diff.
+
+**The spec is a lead; the code is the source.** A dated design doc drifts from the
+implementation, so transcribing it would launder stale claims into the one place that must not
+lie. Today's stale spec is visibly history; migrated unchecked, it becomes "current truth"
+lying with authority. Per feature: read the implementation, write the four files from what the
+code does, mark anything you could not confirm with `docs-first:unverified`, link the feature
+from `INDEX.md` and the nav, then delete the design doc.
+
+`FEATURE_DOC_UNVERIFIED` (`WARN`, one aggregate per feature) tracks the markers so they cannot
+age into truth unnoticed; it clears when the last one is removed. Never a `BLOCKER` —
+otherwise a whole feature would have to be verified before anything could land.
+
+## Code-to-Docs Coverage
+
+The audit otherwise reads only `docs/`, so a feature can ship fully implemented and fully
+undocumented with everything green. Two instruments close that gap — kept apart because their
+precision differs by an order of magnitude:
+
+- **Declared map (`BLOCKER`).** `feature_map: [src/voice=voice-transcription]` maps code path
+  to slug. A mapped path present on disk with no `docs/features/<slug>/` is
+  `FEATURE_DOC_MISSING`. Flat `path=slug` strings, not nested YAML: the config parser must stay
+  trivial because the pre-commit hook and CI read it with bare `python3`.
+- **Coverage ratio (`WARN`).** `FEATURE_DOC_COVERAGE_LOW`, one aggregate finding, comparing
+  candidate code units (immediate subdirectories of `code_roots`, else conventional roots,
+  minus build/test buckets and minus mapped paths) against documented features. Threshold
+  `coverage_min` (default 50); `coverage_gate: true` promotes it to `BLOCKER`.
+
+Say so plainly when reporting the ratio: it is a **smell signal, not a measurement** — a
+layered architecture has directories per layer, not per feature. Only directory *names* are
+read, never file contents. Alignment mode only.
 
 ## Enforcement Gates
 

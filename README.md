@@ -71,6 +71,11 @@ mkdocs.yml                      # MkDocs configuration
 - Every AC-NFR must reference at least one NFR
 - All internal markdown links must resolve
 - All `mkdocs.yml` nav references must resolve
+- And the reverse direction: every feature folder must be reachable — linked from
+  `docs/features/INDEX.md` and present in the nav (both BLOCKER). A feature the reader
+  cannot find is undocumented in practice. Nav coverage is only enforced when your nav
+  already lists features, so file-less nav plugins (awesome-pages, literate-nav) are not
+  penalized. **Breaking change** if you documented features without indexing them.
 
 ### Documentation map and operational state
 
@@ -104,6 +109,17 @@ Behavior:
   principles section (bulleted list) by structure, independent of language. Missing either
   is a BLOCKER; the proposed diff (never applied) appends the English canonical block as a
   starting point to translate.
+- The workflow section must also **reference `docs/features/`**, or it is a BLOCKER
+  (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`). Detection stays language-agnostic because the
+  path is a literal, so a localized workflow passes by citing it. Structure alone is too
+  weak: any numbered list of three steps — a release ritual, for instance — satisfies it
+  while never telling the agent to document a feature.
+
+> **Breaking change.** If your `CLAUDE.md`/`AGENTS.md` never received the canonical block,
+> it audits green on earlier versions of this skill and becomes a BLOCKER on upgrade. This
+> is intentional: it is the case where the docs model was installed but the always-on
+> instruction that drives it never was. Fix by appending the canonical block (the skill
+> proposes the diff) or by adding a `docs/features/` step to your own workflow section.
 
 ## Installation
 
@@ -214,7 +230,60 @@ python3 scripts/build_docs_alignment_plan.py /path/to/repo
 
 # Output as JSON for tooling integration
 python3 scripts/audit_docs_model.py /path/to/repo --format json
+
+# PR-time code<->docs check (opt-in): fails when the diff touches code
+# but nothing under docs/features/. Default base is origin/main.
+python3 scripts/audit_docs_model.py /path/to/repo --diff
+python3 scripts/audit_docs_model.py /path/to/repo --diff upstream/dev
 ```
+
+`--diff` exists because the rest of the audit only reads `docs/` — a feature can ship fully
+implemented and fully undocumented while every rule passes. It reads changed *paths* only
+(`git diff --name-only`), never file contents outside `docs/`.
+
+Defaults chosen to avoid crying wolf: only source extensions count as code (a lockfile bump
+or CI tweak does not), and test paths are exempt since a test-only change ships no behavior.
+Tune with `code_extensions` and `diff_exempt_globs` in `.docs-first/config.yml`; exempt an
+individual change with `docs-first: skip` in a commit message. An unresolvable base is a WARN,
+never a BLOCKER.
+
+### Code-to-docs coverage
+
+`--diff` catches the moment a change lands. For code that is *already* shipped and
+undocumented, the audit reads directory names under your code roots (never file contents):
+
+```yaml
+# .docs-first/config.yml
+feature_map: [src/voice=voice-transcription, src/tree=file-tree]
+code_roots: [src, packages]     # optional; defaults to src/lib/app/apps/packages/...
+coverage_min: 50                # optional threshold for the ratio finding
+coverage_gate: false            # true promotes the ratio WARN to a BLOCKER
+```
+
+A mapped path that exists with no matching feature doc is a **BLOCKER** — you declared the
+mapping, so there is nothing to infer. Beyond the map, one aggregate **WARN** reports the
+ratio of candidate code units to documented features.
+
+That ratio is a smell signal, not a measurement: candidates are directories, and a layered
+architecture (`main/`, `renderer/`, `components/`, `hooks/`) has directories per layer, not per
+feature. It is deliberately one finding rather than one per directory — an audit that marks
+every folder teaches you to ignore it. `feature_map` is the precise instrument.
+
+### Migrating legacy design docs
+
+If you have design docs from a brainstorming workflow (`docs/superpowers/specs/`) and no
+feature docs, the plan emits a migration worklist: one row per design doc with a candidate
+slug and the four target files — structure only, all deferred, never a create diff.
+
+**The spec is a lead; the code is the source.** A dated design doc drifts from the
+implementation, so transcribing it moves stale claims into the one place that must not lie.
+Today the stale spec is visibly history; migrated unchecked, it becomes "current truth" lying
+with authority. So: read the code, write the four files from what it actually does, and mark
+anything you could not confirm with `docs-first:unverified`.
+
+Those markers are tracked (`FEATURE_DOC_UNVERIFIED`, WARN, one per feature) so they cannot age
+into truth unnoticed — a marker nobody follows up on is worse than none. The finding clears
+when the last one is removed. It never blocks, so migration can be incremental.
 
 ## The Docs-First cycle
 

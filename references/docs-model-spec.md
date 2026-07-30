@@ -47,6 +47,37 @@ lives in git history and PR descriptions.
 snapshot (rewritten each session, never append-only). It is not a required file; its
 absence is never a finding. The skill never auto-creates it.
 
+## Feature Documentation Is The Spec
+
+`docs/features/<feature>/` is the single source of truth for a feature's behavior. There is
+no separate "spec" artifact in this model: the spec *is* the feature doc — versioned,
+editable when behavior changes.
+
+Design/brainstorm documents produced by tooling (canonically `docs/superpowers/specs/`) are
+**outside the model**. A dated design doc records one execution's intent; once the
+implementation evolves it silently lies, so it is never read as current behavior and never
+counts as documenting a feature. The skill's canonical guidelines block therefore instructs
+agents to redirect a design/brainstorming skill's spec output into
+`docs/features/<feature>/`, mapping design sections onto the canonical files
+(`README.md` for overview/REQ/AC, `flows.md`, `rules.md`, `notes.md`, and `DECISIONS.md`
+for architectural decisions).
+
+Alignment reports a design document found there as a single aggregate `WARN`
+(`SPEC_OUTSIDE_FEATURE_DOCS`, R016), which persists until the folder is empty: the fix is to
+migrate what is still true into the feature docs and delete the rest.
+
+**Migration derives content from the code, not from the spec.** The plan proposes the target
+structure per design doc and defers all content: a dated spec has likely drifted, so
+transcribing it would move stale claims into the source of truth — where they would no longer
+look like history. Claims that could not be confirmed against the implementation carry the
+marker `docs-first:unverified`, tracked by `FEATURE_DOC_UNVERIFIED` (`WARN`, R020) until
+resolved.
+
+Implementation *plans* are the legitimate process artifact and may live outside
+`docs/features/` (canonically `docs/superpowers/plans/`): a plan is the step sequence of one
+execution, born dated and dead at merge. Plans are not part of the required set; their
+absence is never a finding.
+
 ## Feature README Minimum Sections
 
 The seven canonical sections (Overview, Requirements, Acceptance Criteria, Dependencies,
@@ -75,6 +106,27 @@ Where:
 - Every AC-NFR heading in `docs/nfr/NON_FUNCTIONAL.md` must reference at least one `NFR-*` in the same file.
 - Internal markdown links must resolve to existing files.
 - `mkdocs.yml` nav markdown references must resolve to existing files under `docs/`.
+- Conversely, every `docs/features/<feature>/` directory must be reachable: linked from
+  `docs/features/INDEX.md` (`FEATURE_NOT_IN_INDEX`) and present in the nav
+  (`FEATURE_NOT_IN_NAV`), both `BLOCKER`. Nav coverage is only enforced when the nav already
+  enumerates features, so file-less nav plugins are not penalized.
+
+## Code-to-Docs Coverage
+
+The model's claim is that `docs/features/` describes the system's behavior. Checking only
+`docs/` cannot verify that claim: a feature can ship fully implemented and fully undocumented
+while every rule passes. Two checks read the code tree — directory *names* only, never file
+contents, so inspection stays read-only:
+
+- `FEATURE_DOC_MISSING` (`BLOCKER`) — a `feature_map` entry (`path=slug` in
+  `.docs-first/config.yml`) whose code path exists with no matching feature doc. Exact,
+  because the repository declared the mapping.
+- `FEATURE_DOC_COVERAGE_LOW` (`WARN`; `BLOCKER` only with `coverage_gate: true`) — one
+  aggregate finding comparing candidate code units against documented features. A smell
+  signal, not a measurement: candidates are directories, and a layered architecture has
+  directories per layer rather than per feature.
+
+Alignment mode only, and silent in a repository with no recognizable code root.
 
 ## Non-canonical Artifacts To Ignore
 
@@ -82,6 +134,9 @@ Where:
 - `.obsidian/`
 - editor-specific metadata
 - OS cache files
+- `docs/superpowers/specs/` — design-doc artifacts, outside the model (see
+  *Feature Documentation Is The Spec*). Excluded from the audit entirely: a dead design doc
+  is not maintained, so its stale links must not fail the gate.
 
 ## AI Instruction Files (optional, never created)
 
@@ -108,6 +163,12 @@ For an existing file, the skill detects two sections structurally, independent o
 language: a workflow section (heading + numbered step list) and a principles section
 (heading + bulleted list). A file missing either shape is a `BLOCKER`; an absent file is
 `INFO`. Content is not compared against the English block, so localized guidelines pass.
+
+One content requirement is layered on top: the detected workflow section must reference
+`docs/features/` (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`, `BLOCKER`). Shape alone lets a
+release ritual pass while saying nothing about documenting a feature. The requirement remains
+language-agnostic because the path is a literal, not prose; only the workflow section counts,
+and it is not reported when that section is missing altogether.
 
 Existing AI-instruction files should also link to `docs/index.md` (the documentation map).
 A missing pointer is reported as `INFO` (`AI_INSTRUCTION_MAP_POINTER_MISSING`); it is never

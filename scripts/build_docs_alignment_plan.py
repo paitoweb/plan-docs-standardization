@@ -335,6 +335,49 @@ def proposed_diffs(
     return items, deferred_create
 
 
+def legacy_spec_migration(repo: Path) -> list[dict[str, Any]]:
+    """One entry per legacy design doc with no feature doc yet.
+
+    Deliberately proposes structure and no content. The spec is a *lead*: it says a feature
+    exists and roughly what it was meant to do. The source of truth is the implementation --
+    a dated design doc drifts from the code, so copying it into the feature doc would
+    launder stale claims into the one place that must not lie. Content comes from reading
+    the code, and each claim carries the unverified marker until it has been.
+    """
+
+    documented = {adm.normalize_slug(path.name) for path in adm.collect_feature_dirs(repo)}
+
+    entries: list[dict[str, Any]] = []
+    for prefix in adm.IGNORED_DOCS_SUBTREES:
+        subtree = repo / prefix
+        if not subtree.is_dir():
+            continue
+        for spec in sorted(subtree.rglob("*.md")):
+            if adm.should_ignore_path(spec):
+                continue
+            slug = adm.spec_to_candidate_slug(spec.name)
+            if adm.normalize_slug(slug) in documented:
+                continue  # a feature doc for this slug already exists
+            entries.append(
+                {
+                    "spec": spec.relative_to(repo).as_posix(),
+                    "slug": slug,
+                    "targets": [
+                        f"docs/features/{slug}/{name}" for name in adm.FEATURE_REQUIRED_FILES
+                    ],
+                }
+            )
+    return entries
+
+
+MIGRATION_DEFERRED_REASON = (
+    "Legacy spec migration: structure proposed, content deferred. The content must be "
+    "derived from the implementation, not copied from the dated design doc, which has "
+    "likely drifted. Write each claim from the code and mark anything unconfirmed with "
+    f"'{adm.UNVERIFIED_MARKER}'."
+)
+
+
 def build_markdown(
     repo: Path,
     result: dict[str, Any],
@@ -342,7 +385,9 @@ def build_markdown(
     alter_files: list[str],
     diffs: list[dict[str, str]],
     deferred_create: list[dict[str, str]],
+    migration: list[dict[str, Any]] | None = None,
 ) -> str:
+    migration = migration or []
     summary = result["summary"]
     findings = sort_findings(result["findings"])
 
@@ -388,6 +433,46 @@ def build_markdown(
     lines.append("3. Fix broken internal links and invalid mkdocs nav references.")
     lines.append("4. Re-run audit until BLOCKER count reaches zero.")
     lines.append("")
+
+    if migration:
+        lines.append("### Legacy Spec Migration (spec is the lead, code is the source)")
+        lines.append("")
+        lines.append(
+            f"{len(migration)} design document(s) have no feature doc yet. Do **not** copy "
+            "them across: a dated spec drifts from the implementation, so transcribing it "
+            "would launder stale claims into the source of truth. Per feature, in order:"
+        )
+        lines.append("")
+        lines.append(
+            "1. Read the implementation. The spec only tells you the feature exists and "
+            "roughly what it was meant to do."
+        )
+        lines.append(
+            "2. Write `README.md` (overview, `REQ-*`, `AC-*` citing their REQ), `flows.md`, "
+            "`rules.md`, `notes.md` from what the code actually does."
+        )
+        lines.append(
+            f"3. Mark any claim you could not confirm with `{adm.UNVERIFIED_MARKER}`. The "
+            "audit tracks those (`FEATURE_DOC_UNVERIFIED`, WARN) so they cannot age into "
+            "truth unnoticed."
+        )
+        lines.append("4. Link the feature from `docs/features/INDEX.md` and the mkdocs nav.")
+        lines.append(
+            "5. Delete the design doc once nothing true is left in it — that clears "
+            "`SPEC_OUTSIDE_FEATURE_DOCS`."
+        )
+        lines.append("")
+        lines.append("| Design doc | Candidate slug | Target files |")
+        lines.append("|---|---|---|")
+        for entry in migration:
+            targets = "<br>".join(f"`{target}`" for target in entry["targets"])
+            lines.append(f"| `{entry['spec']}` | `{entry['slug']}` | {targets} |")
+        lines.append("")
+        lines.append(
+            "The slug is a *candidate* derived from the filename; rename it to whatever the "
+            "code shows the feature actually is."
+        )
+        lines.append("")
 
     lines.append("## File Create/Alter List")
     lines.append("")
@@ -468,6 +553,13 @@ def main(argv: list[str]) -> int:
         max_diffs=args.max_diffs,
     )
 
+    migration = legacy_spec_migration(repo)
+    # Structure only, never a create diff: content that has not been read against the code
+    # would be exactly the placeholder-laundering the guardrail exists to prevent.
+    for entry in migration:
+        for target in entry["targets"]:
+            deferred_create.append({"path": target, "reason": MIGRATION_DEFERRED_REASON})
+
     absent_ai_files = [
         finding["path"]
         for finding in audit_result["findings"]
@@ -484,12 +576,17 @@ def main(argv: list[str]) -> int:
         "alter_files": alter_files,
         "diffs": diffs,
         "absent_ai_files": absent_ai_files,
+        "legacy_spec_migration": migration,
     }
 
     if args.format == "json":
         print(json.dumps(output, indent=2, ensure_ascii=False))
     else:
-        print(build_markdown(repo, output, create_files, alter_files, diffs, deferred_create))
+        print(
+            build_markdown(
+                repo, output, create_files, alter_files, diffs, deferred_create, migration
+            )
+        )
 
     blockers = output["summary"]["blocker"]
     return 2 if blockers > 0 else 0
