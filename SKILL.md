@@ -140,6 +140,12 @@ Optionally align existing AI instruction files to the canonical guidelines block
   section (bulleted list) structurally, independent of language. Missing either is a
   `BLOCKER`; the proposed diff appends the English canonical block as a starting point to
   translate. Never apply changes.
+- One content requirement on top of shape: the workflow section must reference
+  `docs/features/` (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`, `BLOCKER`). Still
+  language-agnostic — the path is a literal, so a localized workflow passes by citing it.
+  Shape alone lets any numbered list of three steps (a release ritual, say) pass while never
+  telling the agent to document a feature. **Breaking change:** a repo whose file never
+  received the canonical block audits green today and blocks on upgrade.
 
 ## Agent Profiles
 

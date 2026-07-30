@@ -88,7 +88,14 @@ def test_compute_feature_section_gaps_returns_original_titles(tmp_path):
     assert gaps == {"docs/features/gamma/README.md": ["Dependências"]}
 
 
-WORKFLOW_PT = "## Workflow: nova feature\n1. Brainstorm\n2. Spec\n3. Plano\n"
+# A *compliant* pt-BR workflow: localized prose, but routing through the literal path
+# `docs/features/`. This is what makes the content check language-agnostic.
+WORKFLOW_PT = (
+    "## Workflow: nova feature\n"
+    "1. Brainstorm\n"
+    "2. Doc da feature em `docs/features/<feature>/`\n"
+    "3. Plano\n"
+)
 PRINCIPLES_PT = "## Princípios de trabalho\n- Esclarecer\n- Pragmatismo\n- Rastreabilidade\n"
 
 
@@ -119,6 +126,66 @@ def test_check_ai_missing_principles_is_blocker(tmp_path):
     assert len(blockers) == 1
     assert blockers[0].code == "AI_INSTRUCTION_SECTION_MISSING"
     assert blockers[0].severity == "BLOCKER"
+
+
+def test_ptbr_workflow_without_feature_docs_path_blocks(tmp_path):
+    """The content check must not be a disguised English requirement.
+
+    Same localized file as the passing case, minus the `docs/features/` reference: it blocks
+    on the missing reference, not on being written in Portuguese.
+    """
+
+    workflow = "## Workflow: nova feature\n1. Brainstorm\n2. Spec\n3. Plano\n"
+    (tmp_path / "CLAUDE.md").write_text(workflow + "\n" + PRINCIPLES_PT, encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    codes = {f.code for f in findings if f.severity == "BLOCKER"}
+    assert codes == {"AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED"}
+
+
+def test_release_ritual_no_longer_satisfies_the_workflow_requirement(tmp_path):
+    """The reported real-world false pass: a release ritual plus architecture bullets.
+
+    Both shapes are present, so the structural check is happy, yet nothing says to document
+    a feature. This is exactly the file that audited green with 0 BLOCKER, 0 WARN.
+    """
+
+    text = (
+        "See [docs/index.md](docs/index.md).\n\n"
+        "## Release ritual\n1. Bump version\n2. Tag\n3. Publish\n\n"
+        "## Architecture\n- Electron main\n- React renderer\n- IPC bridge\n"
+    )
+    (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    assert adm.detect_ai_instruction_shapes(text) == (True, True)  # shape check passes
+    assert [f.code for f in findings if f.severity == "BLOCKER"] == [
+        "AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED"
+    ]
+
+
+def test_missing_workflow_section_is_not_double_reported(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text(PRINCIPLES_PT, encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    codes = [f.code for f in findings if f.severity == "BLOCKER"]
+    assert codes == ["AI_INSTRUCTION_SECTION_MISSING"]
+
+
+def test_canonical_block_satisfies_the_content_check():
+    text = (adm.skill_root() / adm.CANONICAL_GUIDELINES_REL).read_text(encoding="utf-8")
+    assert adm.workflow_routes_through_feature_docs(text)
+
+
+def test_workflow_reference_is_read_from_the_workflow_section_only(tmp_path):
+    """A mention elsewhere must not satisfy it — the *process* has to route through the doc."""
+
+    text = (
+        "## Release ritual\n1. Bump\n2. Tag\n3. Publish\n\n"
+        "## Notes\n- Specs live in docs/features/ somewhere\n- b\n- c\n"
+    )
+    assert adm.detect_ai_instruction_shapes(text) == (True, True)
+    assert not adm.workflow_routes_through_feature_docs(text)
 
 
 def test_check_ai_absent_is_info(tmp_path):

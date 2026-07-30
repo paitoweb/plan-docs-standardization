@@ -83,6 +83,24 @@ independent): a workflow section (a heading followed by a numbered list of >=3 s
 a principles section (a different heading followed by a bulleted list of >=3 items). A
 file missing either shape is non-compliant (`AI_INSTRUCTION_SECTION_MISSING`).
 
+### R011 Workflow must route through `docs/features/` (BLOCKER)
+
+Structure alone is not enough: R010 accepts any level-2 section with three ordered items, so
+a release ritual passes while saying nothing about documenting a feature. A detected workflow
+section that does not reference `docs/features/` is therefore non-compliant
+(`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`).
+
+The check stays language-agnostic because `docs/features/` is a literal path, not natural
+language — the same trick R014 uses with resolved link targets. A localized workflow passes
+by citing the path (`2. Doc da feature em docs/features/<feature>/`).
+
+Scope is the workflow section only, not the whole file: a mention in an unrelated appendix
+does not make the *process* route through the feature doc. When the workflow section is
+absent entirely, only R010 fires — the missing reference is not reported on top of it.
+
+**Breaking change.** A repository whose AI-instruction file never received the canonical
+block audits green today and turns `BLOCKER` on upgrade. That is the intent of the rule.
+
 ### R012 AI instruction file absent (INFO)
 
 If an AI instruction file does not exist, report it as INFO only. The skill never
@@ -135,6 +153,7 @@ Use strict immediate alignment defaults:
 
 - Required file missing => `BLOCKER`
 - AI instruction workflow/principles section missing => `BLOCKER`
+- Workflow section not referencing `docs/features/` => `BLOCKER`
 - Feature README section missing from the majority => `WARN`
 - Design document present outside `docs/features/` => `WARN`
 - Broken traceability => `BLOCKER`

@@ -136,6 +136,12 @@ language: a workflow section (heading + numbered step list) and a principles sec
 (heading + bulleted list). A file missing either shape is a `BLOCKER`; an absent file is
 `INFO`. Content is not compared against the English block, so localized guidelines pass.
 
+One content requirement is layered on top: the detected workflow section must reference
+`docs/features/` (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`, `BLOCKER`). Shape alone lets a
+release ritual pass while saying nothing about documenting a feature. The requirement remains
+language-agnostic because the path is a literal, not prose; only the workflow section counts,
+and it is not reported when that section is missing altogether.
+
 Existing AI-instruction files should also link to `docs/index.md` (the documentation map).
 A missing pointer is reported as `INFO` (`AI_INSTRUCTION_MAP_POINTER_MISSING`); it is never
 a `BLOCKER` and the structural shape detection is unchanged.

@@ -104,6 +104,17 @@ Behavior:
   principles section (bulleted list) by structure, independent of language. Missing either
   is a BLOCKER; the proposed diff (never applied) appends the English canonical block as a
   starting point to translate.
+- The workflow section must also **reference `docs/features/`**, or it is a BLOCKER
+  (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`). Detection stays language-agnostic because the
+  path is a literal, so a localized workflow passes by citing it. Structure alone is too
+  weak: any numbered list of three steps — a release ritual, for instance — satisfies it
+  while never telling the agent to document a feature.
+
+> **Breaking change.** If your `CLAUDE.md`/`AGENTS.md` never received the canonical block,
+> it audits green on earlier versions of this skill and becomes a BLOCKER on upgrade. This
+> is intentional: it is the case where the docs model was installed but the always-on
+> instruction that drives it never was. Fix by appending the canonical block (the skill
+> proposes the diff) or by adding a `docs/features/` step to your own workflow section.
 
 ## Installation
 

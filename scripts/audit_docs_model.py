@@ -70,6 +70,10 @@ CANONICAL_GUIDELINES_REL = "assets/templates/ai-instructions/guidelines.en.md"
 
 AI_INSTRUCTION_MAP_HEADING = "## Documentation Map"
 
+# The path the workflow must route feature work through. A literal path, so requiring it
+# keeps the content check language-agnostic.
+FEATURE_DOCS_REF = "docs/features/"
+
 IGNORED_FILE_NAMES = {".DS_Store"}
 IGNORED_PATH_PARTS = {".obsidian", "__pycache__"}
 
@@ -755,14 +759,14 @@ def check_mkdocs_nav(repo: Path, findings: list[Finding]) -> None:
             )
 
 
-def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
-    """Detect (has_workflow, has_principles) by structure, independent of language.
+def _shape_indexes(sections: list[list[str]]) -> tuple[int | None, int | None]:
+    """(workflow_index, principles_index) over level-2 sections.
 
-    Workflow = a level-2 section with >=3 ordered-list items.
-    Principles = a *different* level-2 section with >=3 bullet items.
+    Single definition of "which section is the workflow", shared by the shape check and the
+    content check below — if the two disagreed, we would demand a `docs/features/` reference
+    from a section that is not the workflow.
     """
 
-    sections = iter_level2_sections(text)
     ordered_indexes = [
         index
         for index, section in enumerate(sections)
@@ -778,7 +782,42 @@ def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
     principles_index = next(
         (index for index in bullet_indexes if index != workflow_index), None
     )
+    return workflow_index, principles_index
+
+
+def detect_ai_instruction_shapes(text: str) -> tuple[bool, bool]:
+    """Detect (has_workflow, has_principles) by structure, independent of language.
+
+    Workflow = a level-2 section with >=3 ordered-list items.
+    Principles = a *different* level-2 section with >=3 bullet items.
+    """
+
+    workflow_index, principles_index = _shape_indexes(iter_level2_sections(text))
     return workflow_index is not None, principles_index is not None
+
+
+def workflow_section_text(text: str) -> str | None:
+    """The detected workflow section, or None when the file has no such shape."""
+
+    sections = iter_level2_sections(text)
+    workflow_index, _principles_index = _shape_indexes(sections)
+    if workflow_index is None:
+        return None
+    return "\n".join(sections[workflow_index])
+
+
+def workflow_routes_through_feature_docs(text: str) -> bool:
+    """True when the workflow section references docs/features/.
+
+    Content check that stays language-agnostic: `docs/features/` is a literal path, not
+    natural language, so this works on localized guidelines — the same trick R014 uses with
+    resolved link targets. Structure alone is not enough: any numbered list of three steps
+    satisfies the shape check, so a release ritual can pass with no mention of documenting
+    anything.
+    """
+
+    section = workflow_section_text(text)
+    return section is not None and FEATURE_DOCS_REF in section
 
 
 def references_doc_index(path: Path, repo: Path) -> bool:
@@ -818,9 +857,8 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
             )
             continue
 
-        has_workflow, has_principles = detect_ai_instruction_shapes(
-            path.read_text(encoding="utf-8")
-        )
+        text = path.read_text(encoding="utf-8")
+        has_workflow, has_principles = detect_ai_instruction_shapes(text)
         if not has_workflow:
             make_finding(
                 findings,
@@ -838,6 +876,21 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
                 rel,
                 "AI instruction file missing a principles section "
                 "(a heading followed by a bulleted list).",
+            )
+
+        # Only when the shape exists: a missing workflow section is already reported above,
+        # and demanding a reference from a section that is absent would double-report it.
+        if has_workflow and not workflow_routes_through_feature_docs(text):
+            make_finding(
+                findings,
+                "BLOCKER",
+                "AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED",
+                rel,
+                "Workflow section does not reference docs/features/. The workflow must "
+                "route feature work through the feature doc (docs/features/<feature>/), "
+                "which is the spec. Without this, any numbered list of three steps "
+                "satisfies the structural check while saying nothing about documenting "
+                "features.",
             )
 
         if not references_doc_index(path, repo):
