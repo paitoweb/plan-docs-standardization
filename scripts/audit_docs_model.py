@@ -424,6 +424,44 @@ def check_feature_readme(readme_path: Path, repo: Path, findings: list[Finding])
             )
 
 
+def check_specs_outside_feature_docs(repo: Path, findings: list[Finding]) -> None:
+    """WARN once per excluded design-doc subtree that still holds documents.
+
+    docs/features/ is the single source of truth, so a design doc here is either
+    pre-adoption legacy or an agent that ignored the redirect in the canonical block.
+    Reported as one aggregate finding per subtree: a legacy repo can hold dozens, and the
+    resolution is identical for all of them (migrate what is still true, delete the rest),
+    so one finding per file would only drown the rest of the audit.
+    """
+
+    for prefix in IGNORED_DOCS_SUBTREES:
+        subtree = repo / prefix
+        if not subtree.is_dir():
+            continue
+
+        documents = sorted(
+            path for path in subtree.rglob("*.md") if not should_ignore_path(path)
+        )
+        if not documents:
+            continue
+
+        names = [path.relative_to(subtree).as_posix() for path in documents[:5]]
+        listed = ", ".join(names)
+        if len(documents) > len(names):
+            listed += f", +{len(documents) - len(names)} more"
+
+        make_finding(
+            findings,
+            "WARN",
+            "SPEC_OUTSIDE_FEATURE_DOCS",
+            prefix,
+            f"{len(documents)} design document(s) under {prefix}/. The spec belongs in "
+            "docs/features/<feature>/ (the single source of truth for feature behavior). "
+            "Migrate what is still true into the feature docs and remove the rest: "
+            f"{listed}.",
+        )
+
+
 def check_nfr_file(nfr_path: Path, repo: Path, findings: list[Finding]) -> None:
     if not nfr_path.exists():
         return
@@ -943,6 +981,7 @@ def audit_repository(repo: Path) -> dict[str, Any]:
             check_feature_readme(readme, repo, findings)
 
     check_feature_section_consistency(repo, findings)
+    check_specs_outside_feature_docs(repo, findings)
 
     nfr_file = repo / "docs" / "nfr" / "NON_FUNCTIONAL.md"
     check_nfr_file(nfr_file, repo, findings)

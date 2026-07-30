@@ -43,6 +43,59 @@ def test_subtree_predicate_matches_only_whole_path_segments(tmp_path):
     assert not adm.is_ignored_docs_subtree(tmp_path / "docs" / "specs" / "a.md", tmp_path)
 
 
+def test_spec_present_is_reported_once_per_subtree(tmp_path):
+    specs = tmp_path / "docs" / "superpowers" / "specs"
+    specs.mkdir(parents=True)
+    for name in ("a-design.md", "b-design.md", "c-design.md"):
+        (specs / name).write_text("# design\n", encoding="utf-8")
+
+    findings = []
+    adm.check_specs_outside_feature_docs(tmp_path, findings)
+
+    assert len(findings) == 1
+    assert findings[0].code == "SPEC_OUTSIDE_FEATURE_DOCS"
+    assert findings[0].severity == "WARN"
+    assert findings[0].path == "docs/superpowers/specs"
+    assert "3 design document(s)" in findings[0].message
+    assert "a-design.md" in findings[0].message
+
+
+def test_spec_finding_truncates_the_file_list(tmp_path):
+    specs = tmp_path / "docs" / "superpowers" / "specs"
+    specs.mkdir(parents=True)
+    for index in range(9):
+        (specs / f"{index}-design.md").write_text("# design\n", encoding="utf-8")
+
+    findings = []
+    adm.check_specs_outside_feature_docs(tmp_path, findings)
+
+    assert "9 design document(s)" in findings[0].message
+    assert "+4 more" in findings[0].message
+
+
+def test_empty_or_absent_specs_folder_is_never_a_finding(tmp_path):
+    findings = []
+    adm.check_specs_outside_feature_docs(tmp_path, findings)
+    assert findings == []
+
+    (tmp_path / "docs" / "superpowers" / "specs").mkdir(parents=True)
+    adm.check_specs_outside_feature_docs(tmp_path, findings)
+    assert findings == []
+
+
+def test_spec_finding_never_escalates_to_blocker(tmp_path):
+    """The rule must not fail a gate: it flags legacy debt, and legacy cannot be rewritten."""
+
+    specs = tmp_path / "docs" / "superpowers" / "specs"
+    specs.mkdir(parents=True)
+    (specs / "a-design.md").write_text("# design\n", encoding="utf-8")
+
+    result = adm.audit_repository(tmp_path)
+    codes = {f["code"] for f in result["findings"] if f["severity"] == "BLOCKER"}
+    assert "SPEC_OUTSIDE_FEATURE_DOCS" not in codes
+    assert any(f["code"] == "SPEC_OUTSIDE_FEATURE_DOCS" for f in result["findings"])
+
+
 def test_canonical_block_redirects_spec_output_to_feature_docs():
     text = (adm.skill_root() / adm.CANONICAL_GUIDELINES_REL).read_text(encoding="utf-8")
     assert "docs/superpowers/specs/" in text

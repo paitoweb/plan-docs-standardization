@@ -46,6 +46,9 @@ Apply these defaults:
   behavior. Design/brainstorm skills are redirected there by the canonical block; a dated
   design doc under `docs/superpowers/specs/` never counts as documenting a feature.
   Implementation plans (`docs/superpowers/plans/`) are the legitimate process artifact
+- Alignment adds `SPEC_OUTSIDE_FEATURE_DOCS` (`WARN`, one aggregate finding) when design
+  documents are still present under `docs/superpowers/specs/`; it clears when the folder is
+  empty and has no acknowledgement flag by design
 - AI instruction files are optional and never created; only existing ones are audited and proposed for alignment
 - Alignment is language-agnostic: feature-section expectations are inferred by strict majority of the project's own feature docs (`WARN`), and AI-instruction sections are detected structurally (`BLOCKER`); bundled templates and bootstrap stay English
 - `docs/index.md` is a navigational ownership map (what each doc/folder is for and what must not go in it); operational session-state (branch/PR/deploy) is not design truth and lives in git/PRs or the optional `docs/reports/CURRENT_STATE.md` snapshot — never in ROADMAP/BACKLOG/DECISIONS

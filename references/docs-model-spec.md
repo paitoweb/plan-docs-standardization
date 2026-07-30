@@ -62,6 +62,10 @@ agents to redirect a design/brainstorming skill's spec output into
 (`README.md` for overview/REQ/AC, `flows.md`, `rules.md`, `notes.md`, and `DECISIONS.md`
 for architectural decisions).
 
+Alignment reports a design document found there as a single aggregate `WARN`
+(`SPEC_OUTSIDE_FEATURE_DOCS`, R016), which persists until the folder is empty: the fix is to
+migrate what is still true into the feature docs and delete the rest.
+
 Implementation *plans* are the legitimate process artifact and may live outside
 `docs/features/` (canonically `docs/superpowers/plans/`): a plan is the step sequence of one
 execution, born dated and dead at merge. Plans are not part of the required set; their

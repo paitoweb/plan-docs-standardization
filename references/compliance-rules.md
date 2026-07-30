@@ -111,6 +111,24 @@ adoption — never WARN/BLOCKER. The suggestion is suppressed when the user has 
 write-on-consent rule as every other config change. On adoption, the skill ensures the file is
 gitignored (and `git rm --cached` it if already tracked), with consent.
 
+### R016 Spec written outside `docs/features/` (WARN)
+
+`docs/features/` is the single source of truth for feature behavior, so a design document
+under an excluded design-doc subtree (`docs/superpowers/specs/`) is either pre-adoption
+legacy or an agent that ignored the redirect in the canonical block. Presence is the
+violation — there is no threshold to calibrate and no ratio to interpret.
+
+Reported as **one aggregate `WARN` per subtree** (`SPEC_OUTSIDE_FEATURE_DOCS`) with the
+document count and up to five filenames: the resolution is identical for every file
+(migrate what is still true into the feature docs, delete the rest), so one finding per
+file would only drown the rest of the audit.
+
+The finding persists until the folder is empty. That is deliberate — there is no
+acknowledgement flag, because a permanent design-doc archive contradicts the model: a spec
+is history that dies at merge. Note the audit *excludes* this subtree from every other rule
+(see Evaluation Scope) while still counting it here: the folder is not audited as
+documentation, but its contents are evidence about the gap in `docs/features/`.
+
 ## Classification Rules
 
 Use strict immediate alignment defaults:
@@ -118,6 +136,7 @@ Use strict immediate alignment defaults:
 - Required file missing => `BLOCKER`
 - AI instruction workflow/principles section missing => `BLOCKER`
 - Feature README section missing from the majority => `WARN`
+- Design document present outside `docs/features/` => `WARN`
 - Broken traceability => `BLOCKER`
 - Broken links or nav references => `BLOCKER`
 - Missing documentation map in `index.md` => `WARN`
