@@ -166,7 +166,9 @@ Optionally align existing AI instruction files to the canonical guidelines block
   `AI_INSTRUCTION_BLOCK_STALE` (`WARN`); absent => `AI_INSTRUCTION_BLOCK_UNVERSIONED` (`INFO`);
   newer => `AI_INSTRUCTION_BLOCK_AHEAD` (`INFO`, the skill is behind). Language-neutral —
   translations keep the marker for the version translated. **Bump `CANONICAL_BLOCK_VERSION`
-  whenever the canonical block changes in a way consumers need.**
+  whenever the canonical block changes in a way consumers need** — enforced by a pinned hash
+  in `tests/test_block_version_pinning.py`, so editing the block without deciding about the
+  version fails the suite
 - One content requirement on top of shape: the workflow section must reference
   `docs/features/` (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`, `BLOCKER`). Still
   language-agnostic — the path is a literal, so a localized workflow passes by citing it.

@@ -145,6 +145,12 @@ in place rather than append (appending would duplicate them). Reporting "no chan
 stale block is precisely how it stayed stale.
 
 **Bump `CANONICAL_BLOCK_VERSION` whenever `guidelines.en.md` changes in a way consumers need.**
+This is enforced, not merely documented: `tests/test_block_version_pinning.py` pins a hash of
+the canonical block per version, so editing the block without deciding about the version fails
+the suite. Without that trap the version is an unverified claim about content — and a wrong
+version is worse than none, because consumers comparing equal numbers against different text
+are told they are current. Consumer copies cannot be compared by content (they are
+legitimately translated or extended); the source can.
 
 ### R012 AI instruction file absent (INFO)
 
