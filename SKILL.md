@@ -160,6 +160,13 @@ Optionally align existing AI instruction files to the canonical guidelines block
   section (bulleted list) structurally, independent of language. Missing either is a
   `BLOCKER`; the proposed diff appends the English canonical block as a starting point to
   translate. Never apply changes.
+- The block is **copied** into each repo, so copies go stale while every structural rule keeps
+  passing. It carries `<!-- docs-first-block: N -->` inside the workflow section (inside, so
+  appending the section installs it). Older than the skill's version =>
+  `AI_INSTRUCTION_BLOCK_STALE` (`WARN`); absent => `AI_INSTRUCTION_BLOCK_UNVERSIONED` (`INFO`);
+  newer => `AI_INSTRUCTION_BLOCK_AHEAD` (`INFO`, the skill is behind). Language-neutral —
+  translations keep the marker for the version translated. **Bump `CANONICAL_BLOCK_VERSION`
+  whenever the canonical block changes in a way consumers need.**
 - One content requirement on top of shape: the workflow section must reference
   `docs/features/` (`AI_INSTRUCTION_FEATURE_DOC_UNREFERENCED`, `BLOCKER`). Still
   language-agnostic — the path is a literal, so a localized workflow passes by citing it.

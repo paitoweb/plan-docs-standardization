@@ -72,6 +72,17 @@ CANONICAL_GUIDELINES_REL = "assets/templates/ai-instructions/guidelines.en.md"
 
 AI_INSTRUCTION_MAP_HEADING = "## Documentation Map"
 
+# The canonical block is a single source of truth that gets *copied* into each consumer
+# repository, so copies drift the moment the source changes. Nothing else detects that: the
+# shape check (R010) and the path reference (R011) both keep passing on a block that is two
+# revisions old. Bump this whenever guidelines.en.md changes in a way consumers need.
+#
+# The marker lives *inside* the workflow section, not above it: the skill installs the block
+# by appending those sections, so a marker in the preamble would never reach a consumer.
+CANONICAL_BLOCK_VERSION = 2
+
+BLOCK_VERSION_RE = re.compile(r"<!--\s*docs-first-block:\s*(\d+)\s*-->")
+
 # The path the workflow must route feature work through. A literal path, so requiring it
 # keeps the content check language-agnostic.
 FEATURE_DOCS_REF = "docs/features/"
@@ -1228,6 +1239,66 @@ def workflow_routes_through_feature_docs(text: str) -> bool:
     return section is not None and FEATURE_DOCS_REF in section
 
 
+def installed_block_version(text: str) -> int | None:
+    """Version of the canonical block copied into this file, or None when unmarked."""
+
+    match = BLOCK_VERSION_RE.search(text)
+    return int(match.group(1)) if match else None
+
+
+def check_block_version(rel: str, text: str, findings: list[Finding]) -> None:
+    """Reconcile a repo's copy of the canonical block against the skill's current one.
+
+    The block is copied, never linked, so a repo that installed it correctly months ago is
+    silently running an old one: every structural rule still passes. This is the same
+    pathology as the dated design doc, one level up -- a copied artifact nobody reconciles
+    with its source.
+    """
+
+    installed = installed_block_version(text)
+
+    if installed is None:
+        make_finding(
+            findings,
+            "INFO",
+            "AI_INSTRUCTION_BLOCK_UNVERSIONED",
+            rel,
+            "No canonical-block version marker, so improvements to the block never reach "
+            "this file: the guidelines were hand-written or copied before versioning "
+            "existed. Install the current block with "
+            "`render_profile_artifacts.py <profile>`. If your guidelines are a "
+            f"translation, keep them and add `<!-- docs-first-block: "
+            f"{CANONICAL_BLOCK_VERSION} -->` for the version you translated — the marker "
+            "is language-neutral.",
+        )
+        return
+
+    if installed < CANONICAL_BLOCK_VERSION:
+        make_finding(
+            findings,
+            "WARN",
+            "AI_INSTRUCTION_BLOCK_STALE",
+            rel,
+            f"Canonical block is version {installed}; the skill ships version "
+            f"{CANONICAL_BLOCK_VERSION}. The structural rules still pass, which is exactly "
+            "why this needs saying: the file looks compliant while missing everything the "
+            "block gained since. Regenerate with "
+            "`render_profile_artifacts.py <profile>` and replace the block's sections.",
+        )
+        return
+
+    if installed > CANONICAL_BLOCK_VERSION:
+        make_finding(
+            findings,
+            "INFO",
+            "AI_INSTRUCTION_BLOCK_AHEAD",
+            rel,
+            f"Canonical block is version {installed}, newer than the skill's "
+            f"{CANONICAL_BLOCK_VERSION}. The installed skill is behind, not the repo — "
+            "update the skill rather than editing this file.",
+        )
+
+
 def references_doc_index(path: Path, repo: Path) -> bool:
     """True when the markdown file links to docs/index.md (by resolved target)."""
 
@@ -1300,6 +1371,11 @@ def check_ai_instruction_files(repo: Path, findings: list[Finding]) -> None:
                 "satisfies the structural check while saying nothing about documenting "
                 "features.",
             )
+
+        # Only once the block is structurally there. When a section is missing we are
+        # already telling them to install the block; its version is not the news.
+        if has_workflow and has_principles:
+            check_block_version(rel, text, findings)
 
         if not references_doc_index(path, repo):
             make_finding(
