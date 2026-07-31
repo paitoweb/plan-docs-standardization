@@ -106,6 +106,52 @@ absent entirely, only R010 fires — the missing reference is not reported on to
 **Breaking change.** A repository whose AI-instruction file never received the canonical
 block audits green today and turns `BLOCKER` on upgrade. That is the intent of the rule.
 
+### R021 Canonical block staleness (WARN/INFO)
+
+The canonical block is a single source of truth that is **copied** into each consumer
+repository, never linked. Copies drift the moment the source changes, and nothing else
+detects it: R010 (shape) and R011 (path reference) both keep passing on a block that is two
+revisions old. This is the dated-design-doc pathology one level up — a copied artifact nobody
+reconciles with its source.
+
+The block carries a version marker, `<!-- docs-first-block: N -->`, compared against
+`CANONICAL_BLOCK_VERSION`:
+
+| Installed | Finding | Severity |
+|---|---|---|
+| equal | none | — |
+| older | `AI_INSTRUCTION_BLOCK_STALE` | `WARN` |
+| absent | `AI_INSTRUCTION_BLOCK_UNVERSIONED` | `INFO` |
+| newer | `AI_INSTRUCTION_BLOCK_AHEAD` | `INFO` |
+
+Absent is `INFO`, not `WARN`: every repository alive at the time of introduction is unmarked,
+and a `WARN` would fire on all of them at once. Newer means the *skill* is behind, so the
+message points at updating the skill rather than editing the repo.
+
+**The marker lives inside the workflow section**, not above it. The skill installs the block
+by appending its sections, so a marker in the preamble would never reach a consumer — the
+versioning would be invisible in exactly the repos it is meant to serve.
+
+**It is language-neutral**, so localized guidelines are unaffected: translate the block and
+keep the marker for the version you translated. A hand-written file simply reports the `INFO`
+until it adopts one.
+
+Nothing is reported when the block is not structurally present — R010 is already telling that
+repo to install it, and the version of a missing block is not the news.
+
+Plan output follows suit: for a stale or unmarked file with no missing sections, the plan
+states what to regenerate instead of `No changes required.`, and says to replace the sections
+in place rather than append (appending would duplicate them). Reporting "no changes" on a
+stale block is precisely how it stayed stale.
+
+**Bump `CANONICAL_BLOCK_VERSION` whenever `guidelines.en.md` changes in a way consumers need.**
+This is enforced, not merely documented: `tests/test_block_version_pinning.py` pins a hash of
+the canonical block per version, so editing the block without deciding about the version fails
+the suite. Without that trap the version is an unverified claim about content — and a wrong
+version is worse than none, because consumers comparing equal numbers against different text
+are told they are current. Consumer copies cannot be compared by content (they are
+legitimately translated or extended); the source can.
+
 ### R012 AI instruction file absent (INFO)
 
 If an AI instruction file does not exist, report it as INFO only. The skill never
@@ -267,6 +313,7 @@ Use strict immediate alignment defaults:
 - Required file missing => `BLOCKER`
 - AI instruction workflow/principles section missing => `BLOCKER`
 - Workflow section not referencing `docs/features/` => `BLOCKER`
+- Installed canonical block older than the skill's => `WARN`; unmarked or newer => `INFO`
 - Feature README section missing from the majority => `WARN`
 - Design document present outside `docs/features/` => `WARN`
 - Broken traceability => `BLOCKER`

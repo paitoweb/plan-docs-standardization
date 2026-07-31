@@ -170,6 +170,14 @@ release ritual pass while saying nothing about documenting a feature. The requir
 language-agnostic because the path is a literal, not prose; only the workflow section counts,
 and it is not reported when that section is missing altogether.
 
+The block is **copied** into each repository, never linked, so copies go stale when the
+source changes while every structural rule keeps passing. It therefore carries a
+language-neutral version marker inside the workflow section,
+`<!-- docs-first-block: N -->`: older than the skill's is `AI_INSTRUCTION_BLOCK_STALE`
+(`WARN`), absent is `AI_INSTRUCTION_BLOCK_UNVERSIONED` (`INFO`), newer is
+`AI_INSTRUCTION_BLOCK_AHEAD` (`INFO`, meaning the skill is behind). Translations keep the
+marker for the version they translated.
+
 Existing AI-instruction files should also link to `docs/index.md` (the documentation map).
 A missing pointer is reported as `INFO` (`AI_INSTRUCTION_MAP_POINTER_MISSING`); it is never
 a `BLOCKER` and the structural shape detection is unchanged.

@@ -115,6 +115,14 @@ Behavior:
   weak: any numbered list of three steps — a release ritual, for instance — satisfies it
   while never telling the agent to document a feature.
 
+- The block is **copied** into your repo, not linked, so it goes stale when the skill's
+  version moves on — and every structural rule keeps passing on a stale copy. It carries
+  `<!-- docs-first-block: N -->`: older than the skill's is a WARN, absent is an INFO, newer
+  means your skill install is behind. Updating the skill does **not** update your
+  `CLAUDE.md`; regenerate with `render_profile_artifacts.py <profile>` and replace the block's
+  sections in place. The marker is language-neutral, so a translation keeps it for the version
+  it translated.
+
 > **Breaking change.** If your `CLAUDE.md`/`AGENTS.md` never received the canonical block,
 > it audits green on earlier versions of this skill and becomes a BLOCKER on upgrade. This
 > is intentional: it is the case where the docs model was installed but the always-on

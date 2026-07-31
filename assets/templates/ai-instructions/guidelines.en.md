@@ -1,5 +1,7 @@
 ## Workflow: New Feature
 
+<!-- docs-first-block: 2 -->
+
 Steps in order — each typically corresponds to one interaction. Steps may be combined when the feature is small.
 
 **IMPORTANT**: Before advancing to any step, verify that the previous ones were completed. If the user asks to implement without docs, requirements, and a plan in place, question it and guide them back to the correct step.

@@ -190,7 +190,32 @@ def ai_instruction_update_diff(repo: Path, target_rel: str) -> str:
         if map_section:
             blocks.append(_append_block_diff(target_rel, file_lines, map_section, label))
 
-    return "\n\n".join(blocks) if blocks else "No changes required."
+    if blocks:
+        return "\n\n".join(blocks)
+
+    # Every section is structurally present, so there is nothing to append -- but an old or
+    # hand-written block is still out of date, and appending a second copy of the canonical
+    # sections would create duplicates. Say what to do instead of "No changes required.",
+    # which is what let a stale block look healthy in the first place.
+    installed = adm.installed_block_version(text)
+    if installed is None:
+        return (
+            "No sections missing, but this file carries no canonical-block version marker: "
+            "the guidelines were hand-written or predate versioning, so block improvements "
+            "never reached them. Review "
+            f"`python3 scripts/render_profile_artifacts.py <profile>` and replace the "
+            "workflow/principles sections with the current block (do not append -- that "
+            "would duplicate them)."
+        )
+    if installed < adm.CANONICAL_BLOCK_VERSION:
+        return (
+            f"No sections missing, but the canonical block is version {installed} and the "
+            f"skill ships {adm.CANONICAL_BLOCK_VERSION}. Regenerate with "
+            "`python3 scripts/render_profile_artifacts.py <profile>` and replace the "
+            "block's sections in place (appending would duplicate them)."
+        )
+
+    return "No changes required."
 
 
 def placeholder_marker_count(content: str) -> int:

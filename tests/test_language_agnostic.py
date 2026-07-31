@@ -111,8 +111,28 @@ def test_detect_shapes_requires_distinct_sections():
 
 
 def test_check_ai_ptbr_file_passes(tmp_path):
+    """A localized file never blocks or warns; only the unversioned-block INFO applies."""
+
     pointer = "See [docs/index.md](docs/index.md).\n\n"
     (tmp_path / "CLAUDE.md").write_text(pointer + WORKFLOW_PT + "\n" + PRINCIPLES_PT, encoding="utf-8")
+    findings = []
+    adm.check_ai_instruction_files(tmp_path, findings)
+    claude = [f for f in findings if f.path == "CLAUDE.md"]
+    assert [(f.severity, f.code) for f in claude] == [
+        ("INFO", "AI_INSTRUCTION_BLOCK_UNVERSIONED")
+    ]
+
+
+def test_translated_block_carrying_the_marker_is_fully_clean(tmp_path):
+    """The marker is language-neutral: a translation opts into update tracking by keeping it."""
+
+    text = (
+        "See [docs/index.md](docs/index.md).\n\n"
+        f"## Workflow: nova feature\n\n<!-- docs-first-block: {adm.CANONICAL_BLOCK_VERSION} -->\n\n"
+        "1. Brainstorm\n2. Doc da feature em `docs/features/<feature>/`\n3. Plano\n\n"
+        + PRINCIPLES_PT
+    )
+    (tmp_path / "CLAUDE.md").write_text(text, encoding="utf-8")
     findings = []
     adm.check_ai_instruction_files(tmp_path, findings)
     assert [f for f in findings if f.path == "CLAUDE.md"] == []
